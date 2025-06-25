@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Word Float</title>
+    <link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+    <div class="header">
+        <button class="hamburger" aria-label="メニュー" aria-controls="nav-menu" aria-expanded="false" onclick="toggleMenu(this)">
+            <span class="hamburger__line"></span>
+            <span class="hamburger__line"></span>
+            <span class="hamburger__line"></span>
+        </button>
+
+        <nav id="nav-menu" class="nav" aria-hidden="true">
+            <h2>設定メニュー</h2>
+
+            <label>カテゴリー:</label>
+            <select id="category-select">
+                <option value="general">General</option>
+                <option value="business">Business</option>
+                <option value="entertainment">Entertainment</option>
+                <option value="health">Health</option>
+                <option value="science">Science</option>
+                <option value="sports">Sports</option>
+                <option value="technology">Technology</option>
+            </select>
+
+            <label>単語数 (Top N): <span id="count-value">50</span></label>
+            <input type="number" id="word-count" value="50" step="1" min="10" max="100"  />
+
+            <label>空気抵抗 (frictionAir):</label>
+            <input type="number" id="friction-air" value="0.001" step="0.001" min="0" max="1" />
+
+            <label>反発係数 (restitution):</label>
+            <input type="number" id="restitution" value="1" step="0.1" min="0" max="2" />
+
+            <label>最大速度:</label>
+            <input type="number" id="max-speed" value="50" step="1" min="1" max="500" />
+
+            <button onclick="reloadWords()">再読み込み</button>
+        </nav>
+    </div>
+
+    <canvas id="world"></canvas>
+
+    <div class="content" id="news-container"></div>
+
+    <script>document.querySelector('canvas').addEventListener('wheel', (event) => {}, { passive: true });</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <script src="static/script.js"></script>
+    </body>
+</html>
