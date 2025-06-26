@@ -18,7 +18,8 @@ const render = Render.create({
 Render.run(render);
 Runner.run(Runner.create(), engine);
 
-let MAX_SPEED = 50;
+let MAX_SPEED = 30;
+let selectedBody = null;
 
 function createWalls() {
   const w = window.innerWidth;
@@ -34,38 +35,50 @@ function createWalls() {
 
 createWalls();
 
+function createWordTexture(word, size, color = '#333') {
+    const canvasText = document.createElement('canvas');
+    const ctx = canvasText.getContext('2d');
+    ctx.font = `${size}px sans-serif`;
+    const width = ctx.measureText(word).width;
+    canvasText.width = width;
+    canvasText.height = size;
+    ctx.font = `${size}px sans-serif`;
+    ctx.fillStyle = color;
+    ctx.fillText(word, 0, size * 0.8);
+    return canvasText.toDataURL();
+}
+
+
 function loadWords(category = 'general', count = 50, frictionAir = 0.001, restitution = 1) {
-  fetch(`/words?category=${category}&count=${count}`)
+  const excluded_words = Array.from(document.querySelectorAll('.excluded-words-text')).map(element => element.innerText).join(',');
+
+  fetch(`/words?category=${category}&count=${count}&excluded=${encodeURIComponent(excluded_words)}`)
     .then(res => res.json())
     .then(data => {
       const words = data.words;
       const articles = data.articles;
-      console.log(articles);
 
       const maxFreq = Math.max(...words.map(w => w.freq));
+      const minFreq = Math.min(...words.map(w => w.freq));
 
       words.forEach(w => {
-        const size = 20 + (w.freq / maxFreq) * 80;
+        const size = 20 + ((w.freq - minFreq) / (maxFreq - minFreq)) * 80;
+        const texture = createWordTexture(w.word, size);
 
-        const canvasText = document.createElement('canvas');
-        const ctx = canvasText.getContext('2d');
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
         ctx.font = `${size}px sans-serif`;
         const width = ctx.measureText(w.word).width;
-        canvasText.width = width;
-        canvasText.height = size;
-        ctx.font = `${size}px sans-serif`;
-        ctx.fillStyle = '#333';
-        ctx.fillText(w.word, 0, size * 0.8);
 
         const body = Bodies.rectangle(
-          Math.random() * window.innerWidth,
-          Math.random() * window.innerHeight,
+          Math.random() * (window.innerWidth - 100) + 50,
+          Math.random() * (window.innerHeight - 100) + 50,
           width,
           size,
           {
             render: {
               sprite: {
-                texture: canvasText.toDataURL(),
+                texture: texture,
                 xScale: 1,
                 yScale: 1
               }
@@ -74,6 +87,11 @@ function loadWords(category = 'general', count = 50, frictionAir = 0.001, restit
             frictionAir: frictionAir
           }
         );
+
+        body.article_ids = w.article_ids;
+        body.originalTexture = texture;
+        body.word = w.word;
+        body.size = size;
 
         Body.setVelocity(body, {
           x: (Math.random() - 0.5) * 2,
@@ -88,6 +106,7 @@ function loadWords(category = 'general', count = 50, frictionAir = 0.001, restit
       articles.forEach(article => {
         const cardWrapper = document.createElement('div');
         cardWrapper.className = 'card__wrapper';
+        cardWrapper.dataset.articleId = article.id;
         cardWrapper.addEventListener('click', () => {
           window.open(article.url, '_blank');
         });
@@ -120,7 +139,8 @@ function loadWords(category = 'general', count = 50, frictionAir = 0.001, restit
         cardWrapper.appendChild(card);
         newsContainer.appendChild(cardWrapper);
       });
-    });
+    }
+  );
 }
 
 loadWords();
@@ -136,6 +156,38 @@ const mouseConstraint = MouseConstraint.create(engine, {
 
 World.add(engine.world, mouseConstraint);
 render.mouse = mouse;
+
+Events.on(mouseConstraint, 'mousedown', (event) => {
+    const mousePosition = event.mouse.position;
+    const bodies = Matter.Query.point(engine.world.bodies, mousePosition);
+
+    if (selectedBody) {
+        selectedBody.render.sprite.texture = selectedBody.originalTexture;
+        selectedBody = null;
+    }
+
+    document.querySelectorAll('.card__wrapper').forEach(card => {
+        card.classList.remove('highlight');
+    });
+
+    if (bodies.length > 0) {
+        const clickedBody = bodies[0];
+        if (!clickedBody.isStatic && clickedBody.article_ids) {
+            selectedBody = clickedBody;
+
+            const highlightTexture = createWordTexture(selectedBody.word, selectedBody.size, '#007bff');
+            selectedBody.render.sprite.texture = highlightTexture;
+
+            clickedBody.article_ids.forEach(id => {
+                const card = document.querySelector(`.card__wrapper[data-article-id='${id}']`);
+                if (card) {
+                    card.classList.add('highlight');
+                }
+            });
+        }
+    }
+});
+
 
 Events.on(engine, 'beforeUpdate', () => {
   engine.world.bodies.forEach(body => {
@@ -167,6 +219,7 @@ function reloadWords() {
   const maxSpeed = parseFloat(document.getElementById('max-speed').value);
 
   MAX_SPEED = maxSpeed;
+  selectedBody = null;
 
   World.clear(engine.world, false);
   createWalls();

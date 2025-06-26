@@ -37,7 +37,12 @@
             <input type="number" id="restitution" value="1" step="0.1" min="0" max="2" />
 
             <label>最大速度:</label>
-            <input type="number" id="max-speed" value="50" step="1" min="1" max="500" />
+            <input type="number" id="max-speed" value="30" step="1" min="1" max="100" />
+
+            <label>除外ワード</label>
+            <div class="excluded-words" id="excluded-words-container">
+                <input type="text" id="excluded-words-input" placeholder="テキストを入力してEnter">
+            </div>
 
             <button onclick="reloadWords()">再読み込み</button>
         </nav>
@@ -47,7 +52,72 @@
 
     <div class="content" id="news-container"></div>
 
-    <script>document.querySelector('canvas').addEventListener('wheel', (event) => {}, { passive: true });</script>
+    <script>
+    document.querySelector('canvas').addEventListener('wheel', (event) => {}, { passive: true });
+
+    const input = document.getElementById('excluded-words-input');
+    const container = document.getElementById('excluded-words-container');
+
+    function createLable(text) {
+        const label = document.createElement('div');
+        label.className = 'excluded-words-label';
+
+        const span = document.createElement('span');
+        span.className = 'excluded-words-text';
+        span.textContent = text;
+
+        const removeBtn = document.createElement('div');
+        removeBtn.className = 'excluded-words-remove';
+
+        label.appendChild(span);
+        label.appendChild(removeBtn);
+
+        label.addEventListener('click', () => label.remove());
+
+        container.insertBefore(label, input);
+    }
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && input.value.trim() !== '') {
+        createLable(input.value.trim());
+        input.value = '';
+      }
+    });
+
+    // ラベル以外の領域クリック時に入力フォーカス
+    container.addEventListener('click', (e) => {
+      if (e.target === container) {
+        input.style.opacity = '1';
+        input.style.pointerEvents = 'auto';
+        input.style.position = 'static';
+        input.style.width = '200px';
+        input.style.height = 'auto';
+        input.style.border = 'none';
+        input.style.outline = 'none';
+        input.style.boxShadow = 'none';
+        input.focus();
+      }
+    });
+
+    // 入力フィールド外クリックで再び非表示に
+    document.addEventListener('click', (e) => {
+      if (!container.contains(e.target)) {
+        input.style.opacity = '0';
+        input.style.pointerEvents = 'none';
+        input.style.position = 'absolute';
+        input.style.width = '0';
+        input.style.height = '0';
+        input.style.border = 'none';
+        input.style.outline = 'none';
+        input.style.boxShadow = 'none';
+      }
+    });
+
+    const default_excluded_words = [
+      '#Articles', '#Conjunctions', '#Prepositions', '#Pronouns', '#Be-verbs', '#Auxiliary Verbs', '#Common Adverbs & Others'
+    ];
+    default_excluded_words.forEach(w => createLable(w));
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <script src="static/script.js"></script>
     </body>
