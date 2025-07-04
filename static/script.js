@@ -10,7 +10,7 @@ const render = Render.create({
   options: {
     width: window.innerWidth,
     height: window.innerHeight,
-    background: '#f0f0f0',
+    background: '#ffffff', // 変更
     wireframes: false
   }
 });
@@ -35,23 +35,21 @@ function createWalls() {
 
 createWalls();
 
-function createWordTexture(word, size, color = '#333') {
+function createWordTexture(word, size, color = '#161616') { // デフォルト色を変更
     const canvasText = document.createElement('canvas');
     const ctx = canvasText.getContext('2d');
-    ctx.font = `${size}px sans-serif`;
+    ctx.font = `600 ${size}px 'IBM Plex Sans'`; // フォント指定
     const width = ctx.measureText(word).width;
     canvasText.width = width;
-    canvasText.height = size;
-    ctx.font = `${size}px sans-serif`;
+    canvasText.height = size * 1.25; // 少し高さを確保
+    ctx.font = `600 ${size}px 'IBM Plex Sans'`; // 再度フォント指定
     ctx.fillStyle = color;
-    ctx.fillText(word, 0, size * 0.8);
+    ctx.fillText(word, 0, size);
     return canvasText.toDataURL();
 }
 
 
-function loadWords(category = 'general', count = 50, frictionAir = 0.001, restitution = 1) {
-  const excluded_words = Array.from(document.querySelectorAll('.excluded-words-text')).map(element => element.innerText).join(',');
-
+function loadWords(category = 'general', count = 50, frictionAir = 0.001, restitution = 1, excluded_words = default_excluded_words) {
   fetch(`/words?category=${category}&count=${count}&excluded=${encodeURIComponent(excluded_words)}`)
     .then(res => res.json())
     .then(data => {
@@ -62,12 +60,12 @@ function loadWords(category = 'general', count = 50, frictionAir = 0.001, restit
       const minFreq = Math.min(...words.map(w => w.freq));
 
       words.forEach(w => {
-        const size = 20 + ((w.freq - minFreq) / (maxFreq - minFreq)) * 80;
+        const size = 16 + ((w.freq - minFreq) / (maxFreq - minFreq)) * 64; // サイズスケール調整
         const texture = createWordTexture(w.word, size);
 
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.font = `${size}px sans-serif`;
+        ctx.font = `600 ${size}px 'IBM Plex Sans'`;
         const width = ctx.measureText(w.word).width;
 
         const body = Bodies.rectangle(
@@ -175,7 +173,8 @@ Events.on(mouseConstraint, 'mousedown', (event) => {
         if (!clickedBody.isStatic && clickedBody.article_ids) {
             selectedBody = clickedBody;
 
-            const highlightTexture = createWordTexture(selectedBody.word, selectedBody.size, '#007bff');
+            // ハイライト色を #0f62fe に変更
+            const highlightTexture = createWordTexture(selectedBody.word, selectedBody.size, '#0f62fe');
             selectedBody.render.sprite.texture = highlightTexture;
 
             clickedBody.article_ids.forEach(id => {
@@ -207,22 +206,19 @@ function toggleMenu(button) {
   button.classList.toggle('active');
 }
 
-document.getElementById('word-count').addEventListener('input', e => {
-  document.getElementById('count-value').innerText = e.target.value;
-});
-
 function reloadWords() {
   const category = document.getElementById('category-select').value;
   const count = parseInt(document.getElementById('word-count').value);
   const frictionAir = parseFloat(document.getElementById('friction-air').value);
   const restitution = parseFloat(document.getElementById('restitution').value);
   const maxSpeed = parseFloat(document.getElementById('max-speed').value);
+  const excluded_words = Array.from(document.querySelectorAll('.excluded-words-text')).map(element => element.innerText).join(',')
 
   MAX_SPEED = maxSpeed;
   selectedBody = null;
 
   World.clear(engine.world, false);
   createWalls();
-  loadWords(category, count, frictionAir, restitution);
+  loadWords(category, count, frictionAir, restitution, excluded_words);
   World.add(engine.world, mouseConstraint);
 }

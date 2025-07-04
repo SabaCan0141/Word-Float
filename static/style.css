@@ -2,47 +2,58 @@ body {
     margin: 0;
     overflow-x: hidden;
     overflow-y: auto;
-    font-family: sans-serif;
+    font-family: 'IBM Plex Sans', sans-serif;
+    background-color: #ffffff;
+    color: #161616;
 }
-html, body {
-  scrollbar-width: none;        /* Firefox */
-  -ms-overflow-style: none;     /* IE/Edge */
+.invisible-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
-/* Chrome, Safari 対応 */
-html::-webkit-scrollbar, 
-body::-webkit-scrollbar {
-  display: none;                /* WebKit系 */
+.invisible-scrollbar::-webkit-scrollbar {
+  display: none;
 }
+
+
 canvas {
     position: absolute;
     top: 0;
     left: 0;
     display: block;
-    background: #f0f0f0;
+    background: #ffffff;
 }
 
 .header {
     position: relative;
-    padding: 20px;
+    padding: 16px;
 }
+
 .hamburger {
     position: fixed;
-    top: 20px;
-    right: 20px;
+    top: 16px;
+    right: 16px;
     z-index: 100;
     width: 48px;
     height: 48px;
     border: none;
-    background: transparent;
     cursor: pointer;
+
+    background-color: rgba(244, 244, 244, 0.9); /* 半透明の背景色を追加 */
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15); /* 影を追加して浮かび上がらせる */
+    transition: background-color .2s;
+}
+
+
+.hamburger:hover {
+    background-color: rgba(224, 224, 224, 0.95); /* ホバー時の色 */
 }
 .hamburger__line {
     position: absolute;
     left: 11px;
     width: 26px;
     height: 2px;
-    background-color: #333;
+    background-color: #161616;
     transition: all .4s;
 }
 .hamburger__line:nth-of-type(1) {
@@ -68,101 +79,173 @@ canvas {
     position: fixed;
     top: 0;
     left: 0;
-    width: 300px;
+    width: 304px;
     height: 100vh;
     background-color: #ffffff;
-    box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+    border-right: 1px solid #e0e0e0;
     transform: translateX(-100%);
     transition: transform 0.4s;
     z-index: 90;
-    padding: 40px 20px;
     box-sizing: border-box;
-    overflow-y: auto;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
 }
 .nav.active {
     transform: translateX(0);
 }
-.nav h2 {
-    font-size: 1.4rem;
-    margin-bottom: 20px;
-    color: #333;
-    border-bottom: 1px solid #ddd;
-    padding-bottom: 10px;
-}
+
 .nav label {
     display: block;
-    margin-top: 15px;
-    margin-bottom: 5px;
-    font-size: 0.9rem;
-    color: #555;
+    margin-top: 16px;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #161616;
 }
-.nav input {
-    width: calc(100% - 22px);
-    padding: 6px 10px;
-    font-size: 1rem;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-}
-.nav select {
+.nav input, .nav select {
     width: 100%;
-    padding: 6px 10px;
-    font-size: 1rem;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+    padding: 8px 16px;
+    box-sizing: border-box;
+    font-size: 14px;
+    border: 1px solid #8d8d8d;
+    border-radius: 0;
+    background-color: #f4f4f4;
+    color: #161616;
+}
+.nav input:focus, .nav select:focus {
+    outline: 2px solid #0f62fe;
+    outline-offset: -2px;
 }
 .nav button {
-    margin-top: 20px;
+    margin-top: 24px;
     width: 100%;
-    padding: 10px;
-    font-size: 1rem;
-    background-color: #666;
+    padding: 16px;
+    font-size: 14px;
+    font-weight: 600;
+    background-color: #0f62fe;
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: 0;
     cursor: pointer;
+    transition: background-color .2s;
 }
 .nav button:hover {
-    background-color: #555;
+    background-color: #0043ce;
+}
+.nav__header {
+    padding: 16px 24px;
+    border-bottom: 1px solid #e0e0e0;
+    flex-shrink: 0;
+}
+.nav__title {
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.2;
+    /* ブラウザのデフォルトスタイルを強制的にリセット */
+    margin: 0;
+    padding: 0;
+}
+
+.nav__body {
+    padding: 24px;
+    overflow-y: auto;
+    flex-grow: 1;
+}
+.nav__body h2 {
+    margin-top: 0;
+}
+.nav__accordion {
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.nav__accordion-header {
+    padding: 16px 0;
+    cursor: pointer;
+    position: relative;
+    list-style: none;
+}
+.nav__accordion-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+    display: inline-block;
+}
+.nav__accordion-header::after {
+    content: '';
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    width: 10px;
+    height: 10px;
+    border-left: 2px solid #161616;
+    border-bottom: 2px solid #161616;
+    transform: translateY(-75%) rotate(-45deg);
+    transition: transform 0.2s;
+}
+.nav__accordion[open] > .nav__accordion-header::after {
+    transform: translateY(-25%) rotate(135deg);
+}
+
+.nav__accordion-body {
+    padding: 0 0 24px 0;
+}
+.nav__about-text {
+    font-size: 14px;
+    line-height: 20px;
+    margin: 0;
 }
 
 .content {
-    position: relative;
+    position: absolute;
     z-index: 1;
-    margin-top: 100vh;
-    padding: 2rem;
-    background: #fff;
+    top: 100vh;
+    padding: 32px;
+    background: #f4f4f4;
+    left: 0;
+    right: 0;
+    box-sizing: border-box;
+}
+
+.content__title {
+    font-size: 28px;
+    font-weight: 600;
+    color: #161616;
+
+    margin: 0 0 16px 0;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+#news-container {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
     gap: 16px;
 }
 
-
 .card__wrapper {
-    margin: 1rem auto;
-    width: 380px;
+    margin: 0;
+    width: 100%;
     overflow: hidden;
-    border-radius: 8px;
-    box-shadow: 0 0 8px rgba(0, 0, 0, .16);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .08);
     cursor: pointer;
-    border: 3px solid transparent;
+    border: 2px solid transparent;
     background-color: #fff;
     transition: all .3s;
 }
 .card__wrapper:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 7px 14px rgba(50,50,93,.1), 0 3px 6px rgba(0,0,0,.08);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,.12);
 }
 
 .card__wrapper.highlight {
-    border-color: #007bff;
-    background-color: #e7f3ff;
-    box-shadow: 0 7px 14px rgba(0, 123, 255, 0.2), 0 3px 6px rgba(0, 0, 0, 0.1);
+    border-color: #0f62fe;
+    background-color: #eef4ff;
+    box-shadow: 0 4px 8px rgba(15, 98, 254, 0.2);
 }
-
 
 .card {
     background-color: transparent;
-    color: #212121;
+    color: #161616;
     text-decoration: none;
 }
 
@@ -171,10 +254,10 @@ canvas {
     flex-wrap: wrap;
 }
 .card__title {
-    padding: 1rem 1.5rem 0;
-    font-size: 1.2rem;
+    padding: 16px 16px 0;
+    font-size: 20px;
     order: 1;
-    font-weight: bold;
+    font-weight: 600;
     text-decoration: none;
 }
 .card__thumbnail {
@@ -190,31 +273,32 @@ canvas {
     display: block;
 }
 .card__body {
-    padding: 0 1.5rem;
+    padding: 0 16px;
 }
 .card__text {
-    font-size: .8rem;
-    margin-top: 0;
-    margin-bottom: 1.5rem;
+    font-size: 14px;
+    line-height: 20px;
+    margin-top: 8px;
+    margin-bottom: 16px;
 }
-
 
 .excluded-words {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
-    border: 1px solid #ccc;
-    padding: 1rem;
-    border-radius: 0.5rem;
+    gap: 8px;
+    border: 1px solid #8d8d8d;
+    background-color: #f4f4f4;
+    padding: 8px;
     position: relative;
+    min-height: 40px;
 }
 .excluded-words-label {
-    background-color: #f0f0f0;
-    padding: 0.3rem 0.8rem 0.3rem 0.3rem;
-    border-radius: 0.2rem;
+    background-color: #e0e0e0;
+    padding: 4px 24px 4px 8px;
+    border-radius: 20px;
     display: flex;
     align-items: center;
-    font-size: 10px;
+    font-size: 12px;
     max-width: 200px;
     cursor: pointer;
     position: relative;
@@ -225,28 +309,31 @@ canvas {
     text-overflow: ellipsis;
 }
 .excluded-words-remove {
-    width: 8px;
-    height: 8px;
-    margin-left: 0.5rem;
-    position: relative;
+    width: 16px;
+    height: 16px;
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
 }
 .excluded-words-remove::before,
 .excluded-words-remove::after {
     content: '';
     position: absolute;
-    top: 0;
+    top: 50%;
     left: 50%;
-    width: 2px;
-    height: 100%;
-    background-color: #888;
-    transform: translateX(-50%) rotate(45deg);
+    width: 1.5px;
+    height: 10px;
+    background-color: #161616;
+}
+.excluded-words-remove::before {
+    transform: translate(-50%, -50%) rotate(45deg);
 }
 .excluded-words-remove::after {
-    transform: translateX(-50%) rotate(-45deg);
+    transform: translate(-50%, -50%) rotate(-45deg);
 }
-.excluded-words-label:hover .excluded-words-remove::before,
-.excluded-words-label:hover .excluded-words-remove::after {
-    background-color: #f00;
+.excluded-words-label:hover {
+    background-color: #c6c6c6;
 }
 .excluded-words-input {
     position: absolute;

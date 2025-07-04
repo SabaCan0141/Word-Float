@@ -1,8 +1,11 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" class="invisible-scrollbar">
 <head>
     <meta charset="UTF-8">
     <title>Word Float</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="static/style.css">
 </head>
 <body>
@@ -14,43 +17,65 @@
         </button>
 
         <nav id="nav-menu" class="nav" aria-hidden="true">
-            <h2>設定メニュー</h2>
+            <header class="nav__header">
+                <h2 class="nav__title">Word Float</h2>
+            </header>
 
-            <label>カテゴリー:</label>
-            <select id="category-select">
-                <option value="general">General</option>
-                <option value="business">Business</option>
-                <option value="entertainment">Entertainment</option>
-                <option value="health">Health</option>
-                <option value="science">Science</option>
-                <option value="sports">Sports</option>
-                <option value="technology">Technology</option>
-            </select>
+            <div class="nav__body invisible-scrollbar">
+                <details class="nav__accordion">
+                    <summary class="nav__accordion-header">
+                        <h3>About</h3>
+                    </summary>
+                    <div class="nav__accordion-body">
+                        <p class="nav__about-text">このサイトは、最新ニュースを取得し、単語の出現頻度を可視化するWebアプリケーションです。単語は出現頻度が高いほど大きく表示され、物理演算によって画面内を漂います。</p>
+                    </div>
+                </details>
+                <details class="nav__accordion">
+                    <summary class="nav__accordion-header">
+                        <h3>Settings</h3>
+                    </summary>
+                    <div class="nav__accordion-body">
+                        <label for="category-select">Category</label>
+                        <select id="category-select">
+                            <option value="general">General</option>
+                            <option value="business">Business</option>
+                            <option value="entertainment">Entertainment</option>
+                            <option value="health">Health</option>
+                            <option value="science">Science</option>
+                            <option value="sports">Sports</option>
+                            <option value="technology">Technology</option>
+                        </select>
 
-            <label>単語数 (Top N): <span id="count-value">50</span></label>
-            <input type="number" id="word-count" value="50" step="1" min="10" max="100"  />
+                        <label for="word-count">Top N</label>
+                        <input type="number" id="word-count" value="50" step="1" min="10" max="100"  />
 
-            <label>空気抵抗 (frictionAir):</label>
-            <input type="number" id="friction-air" value="0.001" step="0.001" min="0" max="1" />
+                        <label for="friction-air">Air Resistance</label>
+                        <input type="number" id="friction-air" value="0.001" step="0.001" min="0" max="1" />
 
-            <label>反発係数 (restitution):</label>
-            <input type="number" id="restitution" value="1" step="0.1" min="0" max="2" />
+                        <label for="restitution">Restitution Coefficient</label>
+                        <input type="number" id="restitution" value="1" step="0.1" min="0" max="2" />
 
-            <label>最大速度:</label>
-            <input type="number" id="max-speed" value="30" step="1" min="1" max="100" />
+                        <label for="max-speed">Max Speed</label>
+                        <input type="number" id="max-speed" value="30" step="1" min="1" max="100" />
 
-            <label>除外ワード</label>
-            <div class="excluded-words" id="excluded-words-container">
-                <input type="text" id="excluded-words-input" placeholder="テキストを入力してEnter">
+                        <label for="excluded-words-input">Excluded Word</label>
+                        <div class="excluded-words" id="excluded-words-container">
+                            <input type="text" id="excluded-words-input" class="excluded-words-input" placeholder="テキストを入力してEnter">
+                        </div>
+
+                        <button onclick="reloadWords()">Reload</button>
+                    </div>
+                </details>
             </div>
-
-            <button onclick="reloadWords()">再読み込み</button>
         </nav>
     </div>
 
     <canvas id="world"></canvas>
 
-    <div class="content" id="news-container"></div>
+    <div class="content">
+        <h2 class="content__title">Articles</h2>
+        <div id="news-container"></div>
+    </div>
 
     <script>
     document.querySelector('canvas').addEventListener('wheel', (event) => {}, { passive: true });
