@@ -10,7 +10,7 @@
 </head>
 <body>
     <div class="header">
-        <button class="hamburger" aria-label="メニュー" aria-controls="nav-menu" aria-expanded="false" onclick="toggleMenu(this)">
+        <button class="hamburger" aria-label="メニュー" aria-controls="nav-menu" aria-expanded="false">
             <span class="hamburger__line"></span>
             <span class="hamburger__line"></span>
             <span class="hamburger__line"></span>
@@ -30,7 +30,7 @@
                         <p class="nav__about-text">このサイトは、最新ニュースを取得し、単語の出現頻度を可視化するWebアプリケーションです。単語は出現頻度が高いほど大きく表示され、物理演算によって画面内を漂います。</p>
                     </div>
                 </details>
-                <details class="nav__accordion">
+                <details class="nav__accordion" open>
                     <summary class="nav__accordion-header">
                         <h3>Settings</h3>
                     </summary>
@@ -63,7 +63,7 @@
                             <input type="text" id="excluded-words-input" class="excluded-words-input" placeholder="テキストを入力してEnter">
                         </div>
 
-                        <button onclick="reloadWords()">Reload</button>
+                        <button id="reload-button">Reload</button>
                     </div>
                 </details>
             </div>
@@ -77,72 +77,6 @@
         <div id="news-container"></div>
     </div>
 
-    <script>
-    document.querySelector('canvas').addEventListener('wheel', (event) => {}, { passive: true });
-
-    const input = document.getElementById('excluded-words-input');
-    const container = document.getElementById('excluded-words-container');
-
-    function createLable(text) {
-        const label = document.createElement('div');
-        label.className = 'excluded-words-label';
-
-        const span = document.createElement('span');
-        span.className = 'excluded-words-text';
-        span.textContent = text;
-
-        const removeBtn = document.createElement('div');
-        removeBtn.className = 'excluded-words-remove';
-
-        label.appendChild(span);
-        label.appendChild(removeBtn);
-
-        label.addEventListener('click', () => label.remove());
-
-        container.insertBefore(label, input);
-    }
-
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && input.value.trim() !== '') {
-        createLable(input.value.trim());
-        input.value = '';
-      }
-    });
-
-    // ラベル以外の領域クリック時に入力フォーカス
-    container.addEventListener('click', (e) => {
-      if (e.target === container) {
-        input.style.opacity = '1';
-        input.style.pointerEvents = 'auto';
-        input.style.position = 'static';
-        input.style.width = '200px';
-        input.style.height = 'auto';
-        input.style.border = 'none';
-        input.style.outline = 'none';
-        input.style.boxShadow = 'none';
-        input.focus();
-      }
-    });
-
-    // 入力フィールド外クリックで再び非表示に
-    document.addEventListener('click', (e) => {
-      if (!container.contains(e.target)) {
-        input.style.opacity = '0';
-        input.style.pointerEvents = 'none';
-        input.style.position = 'absolute';
-        input.style.width = '0';
-        input.style.height = '0';
-        input.style.border = 'none';
-        input.style.outline = 'none';
-        input.style.boxShadow = 'none';
-      }
-    });
-
-    const default_excluded_words = [
-      '#Articles', '#Conjunctions', '#Prepositions', '#Pronouns', '#Be-verbs', '#Auxiliary Verbs', '#Common Adverbs & Others'
-    ];
-    default_excluded_words.forEach(w => createLable(w));
-    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <script src="static/script.js"></script>
     </body>
