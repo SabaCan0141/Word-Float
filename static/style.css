@@ -143,7 +143,7 @@ canvas {
 
 .nav__accordion-body { padding: 0 0 24px 0; }
 
-.nav__about-text {
+.nav__text {
     margin: 0;
     font-size: 14px;
     line-height: 20px;
@@ -346,4 +346,47 @@ canvas {
     margin-bottom: 16px;
     font-size: 14px;
     line-height: 20px;
+}
+
+
+/* --- style.cssに追加 --- */
+
+/* Nav Body: Typography & Spacing */
+.nav__body h4 {
+    /* Carbon Token: $heading-01 (20px, 600) に近いスタイル */
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.4;
+    margin-top: 24px; /* $spacing-06 */
+    margin-bottom: 16px; /* $spacing-05 */
+    color: #161616; /* $text-primary */
+}
+
+.nav__body h5 {
+    /* Carbon Token: $label-01 (14px, 400) に近いスタイル */
+    font-size: 14px;
+    font-weight: 600; /* 強調のため600に */
+    margin-top: 16px; /* $spacing-05 */
+    margin-bottom: 8px; /* $spacing-03 */
+    color: #161616; /* $text-primary */
+}
+
+/* Carbonのルールに基づき、テキストは原則左揃えにします */
+.nav__text {
+    margin: 0;
+    font-size: 14px; /* $body-compact-01 */
+    line-height: 20px; /* 1.42857 */
+    text-align: left;
+}
+
+/* リストのスタイルを調整 */
+.nav__list {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.nav__list li {
+    padding-bottom: 8px; /* $spacing-03 */
+    padding-left: 8px;
 }

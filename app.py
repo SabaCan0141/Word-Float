@@ -1,12 +1,18 @@
+import os
 import requests
 from collections import Counter
 import re
+from datetime import datetime, timezone
+import json
+from functools import lru_cache
 
 from flask import Flask, jsonify, render_template, request
 
 
 USE_DUMMY = True
 NEWS_API_KEY = 'YOUR_NEWS_API_KEY'
+
+DUMMY_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dummy.json")
 
 STOP_WORDS_SET = {
     '#Articles': ['a', 'an', 'the'],
@@ -18,26 +24,40 @@ STOP_WORDS_SET = {
     '#Common Adverbs & Others': ['not', 'very', 'just', 'also', 'too', 'so', 'only', 'here', 'there', 'when', 'where', 'why', 'how', 'again', 'then', 'once', 'further', 'now', 'always', 'never']
 }
 
-if USE_DUMMY:
-    import json
-    with open('test.json', 'r', encoding='utf-8') as f:
-        dummy_data = json.load(f)
-
 
 app = Flask(__name__)
 
+def get_timestamp():
+    now = datetime.now(timezone.utc)
+    rounded = now.replace(minute=0, second=0, microsecond=0)
+    timestamp = rounded.strftime("%Y%m%d%H")
+    return timestamp
+
+def save_json(path, data):
+    with open(path, "w") as f:
+        json.dump(data, f)
+
+def load_json(path):
+    with open(path, "r") as f:
+        return json.load(f)
+
+@lru_cache(maxsize=7)
+def fetch_news_api(category, timestamp):
+    url = 'https://newsapi.org/v2/top-headlines'
+    headers = {'X-Api-Key': NEWS_API_KEY}
+    params = {
+        'category': category,
+        'pageSize': 100
+    }
+    res = requests.get(url, headers=headers, params=params)
+    articles_data = res.json().get('articles', [])
+    return articles_data
+
 def fetch_words(category, count, excluded_words):
     if USE_DUMMY:
-        articles_data = dummy_data.get('articles', [])
+        articles_data = load_json(DUMMY_FILE).get(category, [])
     else:
-        url = f'https://newsapi.org/v2/top-headlines'
-        headers = {'X-Api-Key': NEWS_API_KEY}
-        params = {
-            'category': category,
-            'pageSize': 100
-        }
-        res = requests.get(url, headers=headers, params=params)
-        articles_data = res.json().get('articles', [])
+        articles_data = fetch_news_api(category, get_timestamp())
 
     articles = []
     for i, article in enumerate(articles_data):
@@ -93,4 +113,4 @@ def words():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()

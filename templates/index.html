@@ -27,10 +27,59 @@
                         <h3>About</h3>
                     </summary>
                     <div class="nav__accordion-body">
-                        <p class="nav__about-text">このサイトは、最新ニュースを取得し、単語の出現頻度を可視化するWebアプリケーションです。単語は出現頻度が高いほど大きく表示され、物理演算によって画面内を漂います。</p>
+                        <p class="nav__text">このサイトは、最新ニュースを取得し、単語の出現頻度を可視化するWebアプリケーションです。単語は出現頻度が高いほど大きく表示され、物理演算によって画面内を漂います。</p>
                     </div>
                 </details>
-                <details class="nav__accordion" open>
+                <details class="nav__accordion">
+                    <summary class="nav__accordion-header">
+                        <h3>How to Use</h3>
+                    </summary>
+                    <div class="nav__accordion-body">
+                        <p class="nav__text">本アプリケーションは、最新のニュース記事から頻出単語を抽出し、その出現頻度に基づいて物理シミュレーション環境内に可視化するツールです。</p>
+
+                        <hr>
+
+                        <h4>基本操作</h4>
+                        <ul class="nav__list">
+                            <li>
+                                <h5>オブジェクトの操作</h5>
+                                <p class="nav__text">Canvas内に表示されている各単語（オブジェクト）は、マウスクリックでドラッグすることにより、任意の位置へ移動させることが可能です。</p>
+                            </li>
+                            <li>
+                                <h5>関連記事の参照</h5>
+                                <p class="nav__text">特定の単語オブジェクトをクリックすると、その単語を含むニュース記事が画面下部の "Articles" セクションにハイライト表示されます。記事カードをクリックすることで、元のニュースソースを新しいタブで開きます。</p>
+                            </li>
+                        </ul>
+
+                        <hr>
+
+                        <h4>設定パネル</h4>
+                        <p class="nav__text">画面左上のメニューボタンから設定パネルへアクセスできます。各種パラメータを変更した際は、 "Reload" ボタンを押すことでシミュレーションに反映されます。</p>
+                        <ul class="nav__list">
+                            <li>
+                                <h5>Category</h5>
+                                <p class="nav__text">取得するニュース記事のカテゴリを指定します。</p>
+                            </li>
+                            <li>
+                                <h5>Top N</h5>
+                                <p class="nav__text">出現頻度が高い上位N個の単語を抽出して表示します。数値を大きくすると、より多くの単語が表示されます。</p>
+                            </li>
+                            <li>
+                                <h5>Air Resistance (空気抵抗)</h5>
+                                <p class="nav__text">オブジェクトの動きに対する空気抵抗の係数を設定します。値が0に近いほど、オブジェクトは減速しにくくなります。</p>
+                            </li>
+                            <li>
+                                <h5>Restitution Coefficient (反発係数)</h5>
+                                <p class="nav__text">オブジェクトが他のオブジェクトや壁と衝突した際の反発の強さを設定します。値が1のとき完全弾性衝突に近くなり、高く跳ね返ります。</p>
+                            </li>
+                            <li>
+                                <h5>Excluded Word (除外単語)</h5>
+                                <p class="nav__text">分析対象から除外したい単語を指定します。入力フィールドに単語を入力しEnterキーを押すことで、リストに追加されます。デフォルトでは、一般的な助詞や接続詞などが除外されています。</p>
+                            </li>
+                        </ul>
+                    </div>
+                </details>
+                <details class="nav__accordion">
                     <summary class="nav__accordion-header">
                         <h3>Settings</h3>
                     </summary>
