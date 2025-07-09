@@ -31,7 +31,7 @@
 
 ### 1. リポジトリをクローン
 ```bash
-git clone https://github.com/your-username/Word-Float.git
+git clone https://github.com/SabaCan0141/Word-Float.git
 cd Word-Float
 ```
 
@@ -56,7 +56,7 @@ pip install Flask requests
 ### 4. News APIキーの設定（任意）
 このアプリケーションは、APIキーがなくてもダミーデータ (dummy.json) を使って完全に動作します。
 
-実際の最新ニュースを取得したい場合は、NewsAPI で無料のAPIキーを取得し、app.pyの以下の部分を書き換えてください。
+実際の最新ニュースを取得したい場合は、[NewsAPI](https://newsapi.org/) で無料のAPIキーを取得し、app.pyの以下の部分を書き換えてください。
 
 ```python
 # app.py
