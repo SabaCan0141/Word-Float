@@ -21,6 +21,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let MAX_SPEED = 30;
     let selectedBody = null;
+    let allowRotation = true;
+
+    // Toggle whether a word body can rotate. Locking rotation sets inertia to
+    // Infinity (Matter.js convention); unlocking restores the body's original
+    // inertia stored at creation time.
+    const applyRotation = (body) => {
+        if (body.isStatic) return;
+        if (allowRotation) {
+            if (body.defaultInertia !== undefined) {
+                Body.setInertia(body, body.defaultInertia);
+            }
+        } else {
+            Body.setInertia(body, Infinity);
+            Body.setAngularVelocity(body, 0);
+        }
+    };
 
     const createWalls = () => {
         const w = window.innerWidth;
@@ -49,16 +65,43 @@ document.addEventListener('DOMContentLoaded', () => {
         return canvasText.toDataURL();
     };
 
-    const loadWords = (category = 'general', count = 50, frictionAir = 0.001, restitution = 1, excluded_words = default_excluded_words) => {
-        fetch(`/words?category=${category}&count=${count}&excluded=${encodeURIComponent(excluded_words)}`)
+    // Adapt the v2 /api/news payload to the shape the renderer expects:
+    // map count -> freq, link -> url, summary -> description, placeholder image,
+    // and rebuild per-word article_ids from each article's matched_words.
+    const adaptResponse = (data) => {
+        const articles = (data.articles || []).map((a, i) => ({
+            id: i,
+            title: a.title,
+            description: a.summary || '',
+            url: a.link,
+            matched_words: a.matched_words || []
+        }));
+        const words = (data.words || []).map(w => ({
+            word: w.word,
+            freq: w.count,
+            article_ids: articles
+                .filter(a => a.matched_words.includes(w.word))
+                .map(a => a.id)
+        }));
+        return { words, articles };
+    };
+
+    const loadWords = (topic = 'TOP', edition = 'JP', count = 50, frictionAir = 0.001, restitution = 1, excluded_words = default_excluded_words) => {
+        const excludedList = Array.isArray(excluded_words) ? excluded_words : String(excluded_words).split(',');
+        const excludedSet = new Set(excludedList.map(s => s.trim().toLowerCase()).filter(Boolean));
+
+        fetch(`/api/news?topic=${encodeURIComponent(topic)}&edition=${encodeURIComponent(edition)}&limit=${count}`)
             .then(res => res.json())
-            .then(data => {
-                const { words, articles } = data;
-                const maxFreq = Math.max(...words.map(w => w.freq));
-                const minFreq = Math.min(...words.map(w => w.freq));
+            .then(raw => {
+                const { words: allWords, articles } = adaptResponse(raw);
+                const words = allWords.filter(w => !excludedSet.has(w.word.toLowerCase()));
+
+                const maxFreq = words.length ? Math.max(...words.map(w => w.freq)) : 0;
+                const minFreq = words.length ? Math.min(...words.map(w => w.freq)) : 0;
+                const freqRange = (maxFreq - minFreq) || 1;
 
                 words.forEach(w => {
-                    const size = 16 + ((w.freq - minFreq) / (maxFreq - minFreq)) * 64;
+                    const size = 16 + ((w.freq - minFreq) / freqRange) * 64;
                     const texture = createWordTexture(w.word, size);
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
@@ -87,6 +130,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     body.originalTexture = texture;
                     body.word = w.word;
                     body.size = size;
+                    body.defaultInertia = body.inertia;
+                    applyRotation(body);
 
                     Body.setVelocity(body, {
                         x: (Math.random() - 0.5) * 2,
@@ -111,9 +156,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     card.innerHTML = `
                         <div class="card__header">
                             <p class="card__title">${article.title}</p>
-                            <figure class="card__thumbnail">
-                                <img class="card__image" src="${article.image}" alt="">
-                            </figure>
                         </div>
                         <div class="card__body">
                             <p class="card__text">${article.description}</p>
@@ -186,7 +228,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const reloadWords = () => {
-        const category = document.getElementById('category-select').value;
+        const topic = document.getElementById('category-select').value;
+        const edition = document.getElementById('edition-select').value;
         const count = parseInt(document.getElementById('word-count').value);
         const frictionAir = parseFloat(document.getElementById('friction-air').value);
         const restitution = parseFloat(document.getElementById('restitution').value);
@@ -198,7 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         World.clear(engine.world, false);
         createWalls();
-        loadWords(category, count, frictionAir, restitution, excluded_words);
+        loadWords(topic, edition, count, frictionAir, restitution, excluded_words);
         World.add(engine.world, mouseConstraint);
     };
 
@@ -207,6 +250,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('reload-button').addEventListener('click', reloadWords);
+
+    const rotationToggle = document.getElementById('rotation-toggle');
+    allowRotation = rotationToggle.checked;
+    rotationToggle.addEventListener('change', () => {
+        allowRotation = rotationToggle.checked;
+        engine.world.bodies.forEach(applyRotation);
+    });
 
     document.querySelector('canvas').addEventListener('wheel', (event) => {}, { passive: true });
 
@@ -266,10 +316,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    const default_excluded_words = [
-        '#Articles', '#Conjunctions', '#Prepositions', '#Pronouns', '#Be-verbs', '#Auxiliary Verbs', '#Common Adverbs & Others'
-    ];
-    default_excluded_words.forEach(w => createLable(w));
+    // Stopwords / particles are now removed server-side, so there are no
+    // default excluded words; users can still add their own.
+    const default_excluded_words = [];
 
     loadWords();
 });
