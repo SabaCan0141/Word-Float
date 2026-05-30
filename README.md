@@ -4,7 +4,7 @@
 
 単語は出現頻度が高いほど大きく表示され、物理演算によって画面内をふわふわと漂います。単語をクリックすると関連ニュースが表示され、現代の情報の流れを直感的に体験できます。
 
-![main-visual](docs/images/WordFloat_01.gif)
+![main-visual](docs/images/WordFloat.gif)
 
 
 ## 特徴
@@ -124,9 +124,8 @@ Word-Float/
 │  └─ routers/
 │     └─ news.py           # /api/news 等
 ├─ static/                 # script.js, style.css, noimage.png
-├─ templates/
-│  └─ index.html
-└─ dummy.json              # v1 のフィクスチャ（未使用）
+└─ templates/
+   └─ index.html
 ```
 
 

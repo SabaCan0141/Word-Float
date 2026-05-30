@@ -38,19 +38,61 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    let walls = [];
+
     const createWalls = () => {
         const w = window.innerWidth;
         const h = window.innerHeight;
         const thickness = 100;
-        World.add(engine.world, [
+        walls = [
             Bodies.rectangle(w / 2, -thickness / 2, w, thickness, { isStatic: true }),
             Bodies.rectangle(w / 2, h + thickness / 2, w, thickness, { isStatic: true }),
             Bodies.rectangle(-thickness / 2, h / 2, thickness, h, { isStatic: true }),
             Bodies.rectangle(w + thickness / 2, h / 2, thickness, h, { isStatic: true })
-        ]);
+        ];
+        World.add(engine.world, walls);
     };
 
     createWalls();
+
+    // Keep the canvas buffer, render bounds and walls in sync with the window
+    // size. Without this, resizing leaves the old canvas dimensions and wall
+    // positions, so the visible area and collision boundaries desync.
+    const handleResize = () => {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+
+        render.canvas.width = w;
+        render.canvas.height = h;
+        render.options.width = w;
+        render.options.height = h;
+        render.bounds.max.x = w;
+        render.bounds.max.y = h;
+
+        World.remove(engine.world, walls);
+        createWalls();
+
+        // Pull any word bodies that fell outside the new bounds back into view.
+        const margin = 50;
+        engine.world.bodies.forEach(body => {
+            if (body.isStatic) return;
+            const x = Math.min(Math.max(body.position.x, margin), w - margin);
+            const y = Math.min(Math.max(body.position.y, margin), h - margin);
+            if (x !== body.position.x || y !== body.position.y) {
+                Body.setPosition(body, { x, y });
+            }
+        });
+    };
+
+    let resizeScheduled = false;
+    window.addEventListener('resize', () => {
+        if (resizeScheduled) return;
+        resizeScheduled = true;
+        requestAnimationFrame(() => {
+            resizeScheduled = false;
+            handleResize();
+        });
+    });
 
     const createWordTexture = (word, size, color = '#161616') => {
         const canvasText = document.createElement('canvas');
@@ -179,6 +221,15 @@ document.addEventListener('DOMContentLoaded', () => {
     World.add(engine.world, mouseConstraint);
     render.mouse = mouse;
 
+    // Matter.Mouse binds wheel listeners (mousewheel + Firefox's legacy
+    // DOMMouseScroll) that call preventDefault, which hijacks page scrolling.
+    // Chromium/WebKit fire the legacy `mousewheel` (separate from the `wheel`
+    // event that drives their scrolling) so they're unaffected, but Firefox's
+    // DOMMouseScroll cancellation makes scrolling slow/janky. Detach them so
+    // the page scrolls natively in every browser.
+    mouse.element.removeEventListener('mousewheel', mouse.mousewheel);
+    mouse.element.removeEventListener('DOMMouseScroll', mouse.mousewheel);
+
     Events.on(mouseConstraint, 'mousedown', (event) => {
         const mousePosition = event.mouse.position;
         const bodies = Matter.Query.point(engine.world.bodies, mousePosition);
@@ -258,7 +309,6 @@ document.addEventListener('DOMContentLoaded', () => {
         engine.world.bodies.forEach(applyRotation);
     });
 
-    document.querySelector('canvas').addEventListener('wheel', (event) => {}, { passive: true });
 
     const input = document.getElementById('excluded-words-input');
     const container = document.getElementById('excluded-words-container');
