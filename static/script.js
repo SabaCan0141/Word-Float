@@ -55,6 +55,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     createWalls();
 
+    // Pin the Articles section to the exact bottom of the canvas. The canvas
+    // height is `window.innerHeight` (JS px), which does NOT equal CSS `100vh`
+    // on mobile (browser chrome makes them differ), so a static `top: 100vh`
+    // leaves the articles overlapping or gapped away from the canvas. Driving
+    // the offset from the same value the canvas uses keeps them aligned.
+    const syncContentTop = (h) => {
+        const content = document.querySelector('.content');
+        if (content) content.style.top = `${h}px`;
+    };
+
     // Keep the canvas buffer, render bounds and walls in sync with the window
     // size. Without this, resizing leaves the old canvas dimensions and wall
     // positions, so the visible area and collision boundaries desync.
@@ -68,6 +78,8 @@ document.addEventListener('DOMContentLoaded', () => {
         render.options.height = h;
         render.bounds.max.x = w;
         render.bounds.max.y = h;
+
+        syncContentTop(h);
 
         World.remove(engine.world, walls);
         createWalls();
@@ -93,6 +105,8 @@ document.addEventListener('DOMContentLoaded', () => {
             handleResize();
         });
     });
+
+    syncContentTop(window.innerHeight);
 
     const createWordTexture = (word, size, color = '#161616') => {
         const canvasText = document.createElement('canvas');
@@ -230,6 +244,45 @@ document.addEventListener('DOMContentLoaded', () => {
     mouse.element.removeEventListener('mousewheel', mouse.mousewheel);
     mouse.element.removeEventListener('DOMMouseScroll', mouse.mousewheel);
 
+    // Touch: only start a drag when the touch lands on a word; otherwise let the
+    // page scroll natively (so the Articles section below is reachable on phones).
+    // Matter binds its own touch listeners that always preventDefault (blocking
+    // scroll), so detach them and drive the shared `mouse` object ourselves after
+    // a hit-test. Matter reuses the mouse-event handlers for touch, so the
+    // references removed here are exactly the ones it registered.
+    mouse.element.removeEventListener('touchstart', mouse.mousedown);
+    mouse.element.removeEventListener('touchmove', mouse.mousemove);
+    mouse.element.removeEventListener('touchend', mouse.mouseup);
+
+    let touchDragging = false;
+    const bodyUnderTouch = (touch) => {
+        const rect = render.canvas.getBoundingClientRect();
+        const point = { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+        return Matter.Query.point(
+            engine.world.bodies.filter(body => !body.isStatic), point
+        ).length > 0;
+    };
+
+    render.canvas.addEventListener('touchstart', (event) => {
+        if (event.touches.length === 1 && bodyUnderTouch(event.touches[0])) {
+            touchDragging = true;
+            mouse.mousedown(event); // grabs the body and preventDefaults the scroll
+        }
+    }, { passive: false });
+
+    render.canvas.addEventListener('touchmove', (event) => {
+        if (touchDragging) {
+            mouse.mousemove(event); // preventDefaults internally while dragging
+        }
+    }, { passive: false });
+
+    render.canvas.addEventListener('touchend', (event) => {
+        if (touchDragging) {
+            mouse.mouseup(event);
+            touchDragging = false;
+        }
+    }, { passive: false });
+
     Events.on(mouseConstraint, 'mousedown', (event) => {
         const mousePosition = event.mouse.position;
         const bodies = Matter.Query.point(engine.world.bodies, mousePosition);
@@ -274,8 +327,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const toggleMenu = (button) => {
         const nav = document.getElementById('nav-menu');
-        nav.classList.toggle('active');
+        const overlay = document.getElementById('nav-overlay');
+        const isOpen = nav.classList.toggle('active');
         button.classList.toggle('active');
+        overlay.classList.toggle('active', isOpen);
+        button.setAttribute('aria-expanded', String(isOpen));
+        nav.setAttribute('aria-hidden', String(!isOpen));
     };
 
     const reloadWords = () => {
@@ -288,7 +345,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const excluded_words = Array.from(document.querySelectorAll('.excluded-words-text')).map(element => element.innerText).join(',');
 
         MAX_SPEED = maxSpeed;
+        // Rotation is applied only on reload (each body picks up allowRotation in
+        // loadWords), so read the toggle here alongside the other settings.
+        allowRotation = document.getElementById('rotation-toggle').checked;
         selectedBody = null;
+
+        saveSettings();
 
         World.clear(engine.world, false);
         createWalls();
@@ -300,15 +362,12 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleMenu(this);
     });
 
-    document.getElementById('reload-button').addEventListener('click', reloadWords);
-
-    const rotationToggle = document.getElementById('rotation-toggle');
-    allowRotation = rotationToggle.checked;
-    rotationToggle.addEventListener('change', () => {
-        allowRotation = rotationToggle.checked;
-        engine.world.bodies.forEach(applyRotation);
+    // Tapping the backdrop (mobile) closes the sidebar.
+    document.getElementById('nav-overlay').addEventListener('click', () => {
+        toggleMenu(document.querySelector('.hamburger'));
     });
 
+    document.getElementById('reload-button').addEventListener('click', reloadWords);
 
     const input = document.getElementById('excluded-words-input');
     const container = document.getElementById('excluded-words-container');
@@ -370,5 +429,57 @@ document.addEventListener('DOMContentLoaded', () => {
     // default excluded words; users can still add their own.
     const default_excluded_words = [];
 
-    loadWords();
+    // Persist the settings panel to localStorage on every Reload and restore it
+    // on the next visit, so a user's configuration survives closing the page.
+    const SETTINGS_KEY = 'word-float-settings';
+
+    function saveSettings() {
+        const data = {
+            edition: document.getElementById('edition-select').value,
+            category: document.getElementById('category-select').value,
+            wordCount: document.getElementById('word-count').value,
+            frictionAir: document.getElementById('friction-air').value,
+            restitution: document.getElementById('restitution').value,
+            maxSpeed: document.getElementById('max-speed').value,
+            rotation: document.getElementById('rotation-toggle').checked,
+            excludedWords: Array.from(document.querySelectorAll('.excluded-words-text'))
+                .map(el => el.innerText)
+        };
+        try {
+            localStorage.setItem(SETTINGS_KEY, JSON.stringify(data));
+        } catch (e) {
+            /* storage unavailable (e.g. private mode) — settings just won't persist */
+        }
+    }
+
+    function restoreSettings() {
+        let data;
+        try {
+            data = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+        } catch (e) {
+            return;
+        }
+        if (!data) return;
+
+        const setValue = (id, value) => {
+            if (value !== undefined && value !== null) {
+                document.getElementById(id).value = value;
+            }
+        };
+        setValue('edition-select', data.edition);
+        setValue('category-select', data.category);
+        setValue('word-count', data.wordCount);
+        setValue('friction-air', data.frictionAir);
+        setValue('restitution', data.restitution);
+        setValue('max-speed', data.maxSpeed);
+        document.getElementById('rotation-toggle').checked = !!data.rotation;
+        (data.excludedWords || []).forEach(word => {
+            if (word && word.trim()) createLable(word.trim());
+        });
+    }
+
+    restoreSettings();
+    // reloadWords() reads the (now restored) panel, applies MAX_SPEED / rotation,
+    // persists the settings, and performs the initial word load.
+    reloadWords();
 });

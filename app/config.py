@@ -11,7 +11,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    cache_ttl_sec: int = 900
+    cache_ttl_sec: int = 300
     rate_limit_per_min: int = 60
     allowed_origins: list[str] = ["https://word-float.example"]
     http_timeout_sec: float = 10.0

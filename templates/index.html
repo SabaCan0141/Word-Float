@@ -1,155 +1,175 @@
 <!DOCTYPE html>
 <html lang="ja" class="invisible-scrollbar">
+
 <head>
-    <meta charset="UTF-8">
-    <title>Word Float</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="static/style.css">
+  <meta charset="UTF-8">
+  <title>Word Float</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="static/style.css">
+  <link rel="icon" href="/static/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <link rel="manifest" href="/static/site.webmanifest">
 </head>
+
 <body>
-    <div class="header">
-        <button class="hamburger" aria-label="メニュー" aria-controls="nav-menu" aria-expanded="false">
-            <span class="hamburger__line"></span>
-            <span class="hamburger__line"></span>
-            <span class="hamburger__line"></span>
-        </button>
+  <div class="header">
+    <button class="hamburger" aria-label="メニュー" aria-controls="nav-menu" aria-expanded="false">
+      <span class="hamburger__line"></span>
+      <span class="hamburger__line"></span>
+      <span class="hamburger__line"></span>
+    </button>
 
-        <nav id="nav-menu" class="nav" aria-hidden="true">
-            <header class="nav__header">
-                <h2 class="nav__title">Word Float</h2>
-            </header>
+    <nav id="nav-menu" class="nav" aria-hidden="true">
+      <header class="nav__header">
+        <h2 class="nav__title">Word Float</h2>
+      </header>
 
-            <div class="nav__body invisible-scrollbar">
-                <details class="nav__accordion">
-                    <summary class="nav__accordion-header">
-                        <h3>About</h3>
-                    </summary>
-                    <div class="nav__accordion-body">
-                        <p class="nav__text">このサイトは、最新ニュースを取得し、単語の出現頻度を可視化するWebアプリケーションです。単語は出現頻度が高いほど大きく表示され、物理演算によって画面内を漂います。</p>
-                    </div>
-                </details>
-                <details class="nav__accordion">
-                    <summary class="nav__accordion-header">
-                        <h3>How to Use</h3>
-                    </summary>
-                    <div class="nav__accordion-body">
+      <div class="nav__body invisible-scrollbar">
+        <details class="nav__accordion">
+          <summary class="nav__accordion-header">
+            <h3>About</h3>
+          </summary>
+          <div class="nav__accordion-body">
+            <p class="nav__text">このサイトは、最新ニュースを取得し、単語の出現頻度を可視化するWebアプリケーションです。単語は出現頻度が高いほど大きく表示され、物理演算によって画面内を漂います。</p>
+          </div>
+        </details>
+        <details class="nav__accordion">
+          <summary class="nav__accordion-header">
+            <h3>How to Use</h3>
+          </summary>
+          <div class="nav__accordion-body">
 
-                        <h4>基本操作</h4>
-                        <ul class="nav__list">
-                            <li>
-                                <h5>オブジェクトの操作</h5>
-                                <p class="nav__text">Canvas内に表示されている各単語（オブジェクト）は、マウスクリックでドラッグすることにより、任意の位置へ移動させることが可能です。</p>
-                            </li>
-                            <li>
-                                <h5>関連記事の参照</h5>
-                                <p class="nav__text">特定の単語オブジェクトをクリックすると、その単語を含むニュース記事が画面下部の "Articles" セクションにハイライト表示されます。記事カードをクリックすることで、元のニュースソースを新しいタブで開きます。</p>
-                            </li>
-                        </ul>
+            <h4>基本操作</h4>
+            <ul class="nav__list">
+              <li>
+                <h5>オブジェクトの操作</h5>
+                <p class="nav__text">Canvas内に表示されている各単語（オブジェクト）は、マウスクリックでドラッグすることにより、任意の位置へ移動させることが可能です。</p>
+              </li>
+              <li>
+                <h5>関連記事の参照</h5>
+                <p class="nav__text">特定の単語オブジェクトをクリックすると、その単語を含むニュース記事が画面下部の "Articles"
+                  セクションにハイライト表示されます。記事カードをクリックすることで、元のニュースソースを新しいタブで開きます。</p>
+              </li>
+            </ul>
 
-                        <hr>
+            <hr>
 
-                        <h4>設定パネル</h4>
-                        <p class="nav__text">画面左上のメニューボタンから設定パネルへアクセスできます。各種パラメータを変更した際は、 "Reload" ボタンを押すことでシミュレーションに反映されます。</p>
-                        <ul class="nav__list">
-                            <li>
-                                <h5>Edition</h5>
-                                <p class="nav__text">取得するニュースの国・言語エディションを指定します（日本 / 米国）。</p>
-                            </li>
-                            <li>
-                                <h5>Category</h5>
-                                <p class="nav__text">取得するニュース記事のカテゴリ（トピック）を指定します。</p>
-                            </li>
-                            <li>
-                                <h5>Top N</h5>
-                                <p class="nav__text">出現頻度が高い上位N個の単語を抽出して表示します。数値を大きくすると、より多くの単語が表示されます。</p>
-                            </li>
-                            <li>
-                                <h5>Air Resistance (空気抵抗)</h5>
-                                <p class="nav__text">オブジェクトの動きに対する空気抵抗の係数を設定します。値が0に近いほど、オブジェクトは減速しにくくなります。</p>
-                            </li>
-                            <li>
-                                <h5>Restitution Coefficient (反発係数)</h5>
-                                <p class="nav__text">オブジェクトが他のオブジェクトや壁と衝突した際の反発の強さを設定します。値が1のとき完全弾性衝突に近くなり、高く跳ね返ります。</p>
-                            </li>
-                            <li>
-                                <h5>Rotation (回転)</h5>
-                                <p class="nav__text">単語オブジェクトが物理演算で回転するかどうかを切り替えます。オフにすると文字は常に水平のまま漂います。チェックの変更は即座に反映されます。</p>
-                            </li>
-                            <li>
-                                <h5>Excluded Word (除外単語)</h5>
-                                <p class="nav__text">分析対象から除外したい単語を指定します。入力フィールドに単語を入力しEnterキーを押すことで、リストに追加されます。一般的な助詞・接続詞・ストップワードはバックエンドで自動的に除外されます。</p>
-                            </li>
-                        </ul>
-                    </div>
-                </details>
-                <details class="nav__accordion">
-                    <summary class="nav__accordion-header">
-                        <h3>Settings</h3>
-                    </summary>
-                    <div class="nav__accordion-body">
-                        <label for="edition-select">Edition</label>
-                        <select id="edition-select">
-                            <option value="JP">Japan (日本)</option>
-                            <option value="US">United States</option>
-                        </select>
+            <h4>設定パネル</h4>
+            <p class="nav__text">画面左上のメニューボタンから設定パネルへアクセスできます。各種パラメータを変更した際は、 "Reload" ボタンを押すことでシミュレーションに反映されます。</p>
+            <ul class="nav__list">
+              <li>
+                <h5>Edition</h5>
+                <p class="nav__text">取得するニュースの国・言語エディションを指定します（日本 / 米国）。</p>
+              </li>
+              <li>
+                <h5>Category</h5>
+                <p class="nav__text">取得するニュース記事のカテゴリ（トピック）を指定します。</p>
+              </li>
+              <li>
+                <h5>Top N</h5>
+                <p class="nav__text">出現頻度が高い上位N個の単語を抽出して表示します。数値を大きくすると、より多くの単語が表示されます。</p>
+              </li>
+              <li>
+                <h5>Air Resistance (空気抵抗)</h5>
+                <p class="nav__text">オブジェクトの動きに対する空気抵抗の係数を設定します。値が0に近いほど、オブジェクトは減速しにくくなります。</p>
+              </li>
+              <li>
+                <h5>Restitution Coefficient (反発係数)</h5>
+                <p class="nav__text">オブジェクトが他のオブジェクトや壁と衝突した際の反発の強さを設定します。値が1のとき完全弾性衝突に近くなり、高く跳ね返ります。</p>
+              </li>
+              <li>
+                <h5>Rotation (回転)</h5>
+                <p class="nav__text">単語オブジェクトが物理演算で回転するかどうかを切り替えます。オフにすると文字は常に水平のまま漂います。変更後、"Reload" ボタンを押すことで反映されます。</p>
+              </li>
+              <li>
+                <h5>Excluded Word (除外単語)</h5>
+                <p class="nav__text">
+                  分析対象から除外したい単語を指定します。入力フィールドに単語を入力しEnterキーを押すことで、リストに追加されます。一般的な助詞・接続詞・ストップワードはバックエンドで自動的に除外されます。</p>
+              </li>
+            </ul>
+          </div>
+        </details>
+        <details class="nav__accordion">
+          <summary class="nav__accordion-header">
+            <h3>Settings</h3>
+          </summary>
+          <div class="nav__accordion-body">
+            <label for="edition-select">Edition</label>
+            <select id="edition-select">
+              <option value="JP">Japan (日本)</option>
+              <option value="US">United States</option>
+            </select>
 
-                        <label for="category-select">Category</label>
-                        <select id="category-select">
-                            <option value="TOP">Top</option>
-                            <option value="WORLD">World</option>
-                            <option value="NATION">Nation</option>
-                            <option value="BUSINESS">Business</option>
-                            <option value="TECHNOLOGY">Technology</option>
-                            <option value="ENTERTAINMENT">Entertainment</option>
-                            <option value="SPORTS">Sports</option>
-                            <option value="SCIENCE">Science</option>
-                            <option value="HEALTH">Health</option>
-                        </select>
+            <label for="category-select">Category</label>
+            <select id="category-select">
+              <option value="TOP">Top</option>
+              <option value="WORLD">World</option>
+              <option value="NATION">Nation</option>
+              <option value="BUSINESS">Business</option>
+              <option value="TECHNOLOGY">Technology</option>
+              <option value="ENTERTAINMENT">Entertainment</option>
+              <option value="SPORTS">Sports</option>
+              <option value="SCIENCE">Science</option>
+              <option value="HEALTH">Health</option>
+            </select>
 
-                        <label for="word-count">Top N</label>
-                        <input type="number" id="word-count" value="50" step="1" min="10" max="100"  />
+            <label for="word-count">Top N</label>
+            <input type="number" id="word-count" value="50" step="1" min="10" max="100" />
 
-                        <label for="friction-air">Air Resistance</label>
-                        <input type="number" id="friction-air" value="0.001" step="0.001" min="0" max="1" />
+            <label for="friction-air">Air Resistance</label>
+            <input type="number" id="friction-air" value="0.001" step="0.001" min="0" max="1" />
 
-                        <label for="restitution">Restitution Coefficient</label>
-                        <input type="number" id="restitution" value="1" step="0.1" min="0" max="2" />
+            <label for="restitution">Restitution Coefficient</label>
+            <input type="number" id="restitution" value="1" step="0.1" min="0" max="2" />
 
-                        <label for="max-speed">Max Speed</label>
-                        <input type="number" id="max-speed" value="30" step="1" min="1" max="100" />
+            <label for="max-speed">Max Speed</label>
+            <input type="number" id="max-speed" value="30" step="1" min="1" max="100" />
 
-                        <label class="nav__toggle">
-                            <input type="checkbox" id="rotation-toggle"/>
-                            <span>Rotation</span>
-                        </label>
+            <label class="nav__toggle">
+              <input type="checkbox" id="rotation-toggle" />
+              <span>Rotation</span>
+            </label>
 
-                        <label for="excluded-words-input">Excluded Word</label>
-                        <div class="excluded-words" id="excluded-words-container">
-                            <input type="text" id="excluded-words-input" class="excluded-words-input" placeholder="テキストを入力してEnter">
-                        </div>
-
-                        <button id="reload-button">Reload</button>
-                    </div>
-                </details>
+            <label for="excluded-words-input">Excluded Word</label>
+            <div class="excluded-words" id="excluded-words-container">
+              <input type="text" id="excluded-words-input" class="excluded-words-input" placeholder="テキストを入力してEnter">
             </div>
-        </nav>
-    </div>
 
-    <canvas id="world"></canvas>
+            <button id="reload-button">Reload</button>
+          </div>
+        </details>
+      </div>
 
-    <div class="content">
-        <h2 class="content__title">Articles</h2>
-        <div id="news-container"></div>
-        <footer class="content__credit">
-            News data via Google News. © respective publishers. Non-commercial project.
-        </footer>
-    </div>
+      <footer class="nav__footer">
+        <a class="nav__github" href="https://github.com/SabaCan0141/Word-Float" target="_blank" rel="noopener">
+          <svg class="nav__github-icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+            <path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+          </svg>
+          <span>View on GitHub</span>
+        </a>
+      </footer>
+    </nav>
+  </div>
 
-    <p class="credit-bar">News data via Google News. © respective publishers.</p>
+  <div class="nav-overlay" id="nav-overlay"></div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
-    <script src="static/script.js"></script>
-    </body>
+  <canvas id="world"></canvas>
+
+  <div class="content">
+    <h2 class="content__title">Articles</h2>
+    <div id="news-container"></div>
+    <footer class="content__credit">
+      News data via Google News. © respective publishers. Non-commercial project.
+    </footer>
+  </div>
+
+  <p class="credit-bar">News data via Google News. © respective publishers.</p>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+  <script src="static/script.js"></script>
+</body>
+
 </html>

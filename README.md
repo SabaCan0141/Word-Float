@@ -83,7 +83,7 @@ uvicorn app.main:app --reload
 
 | 名前 | デフォルト | 説明 |
 |---|---|---|
-| `CACHE_TTL_SEC` | `900` | キャッシュ TTL（秒） |
+| `CACHE_TTL_SEC` | `300` | キャッシュ TTL（秒） |
 | `RATE_LIMIT_PER_MIN` | `60` | 1 IP あたりの分間リクエスト上限 |
 | `ALLOWED_ORIGINS` | `https://word-float.example` | CORS 許可オリジン（カンマ区切り） |
 | `HTTP_TIMEOUT_SEC` | `10` | 外部 HTTP タイムアウト（秒） |
@@ -133,7 +133,7 @@ Word-Float/
 
 - 本アプリケーションは**非商用の個人プロジェクト**です。
 - ニュースデータは **Google News** から取得しています。各記事の著作権は配信元（各出版社）に帰属します。本文の転載は行わず、見出し・抜粋のみを表示し、元配信元へのリンクを保持します。
-- Google News の robots.txt および利用規約を尊重するため、(トピック, エディション) ごとに 15 分の TTL キャッシュとレートリミット (60 req/min) を設けています。
+- Google News の robots.txt および利用規約を尊重するため、(トピック, エディション) ごとに 5 分の TTL キャッシュとレートリミット (60 req/min) を設けています。
 
 
 ## ライセンス

@@ -409,3 +409,60 @@ canvas {
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
     pointer-events: none;
 }
+
+/* Nav Footer (GitHub link) */
+.nav__footer {
+    flex-shrink: 0;
+    padding: 16px 24px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.nav__github {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #161616;
+    text-decoration: none;
+    transition: color .2s;
+}
+
+.nav__github:hover { color: #0f62fe; }
+
+.nav__github-icon { flex-shrink: 0; }
+
+/* Sidebar backdrop (activated on mobile) */
+.nav-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 85;
+    background-color: rgba(0, 0, 0, 0.4);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .nav {
+        width: 100%;
+        border-right: none;
+    }
+
+    .nav-overlay.active {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    #news-container {
+        grid-template-columns: 1fr;
+    }
+
+    .content {
+        padding: 24px 16px;
+    }
+
+    .content__title { font-size: 24px; }
+
+    .card__title { font-size: 18px; }
+}
