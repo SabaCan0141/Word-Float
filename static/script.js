@@ -97,14 +97,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    let resizeScheduled = false;
+    // Mobile browsers fire `resize` continuously as the URL bar shows/hides
+    // during scrolling. Rebuilding the canvas buffer + walls + repositioning
+    // every body on each of those events is what makes scrolling stutter, so
+    // debounce until the size settles before doing the expensive rebuild.
+    let resizeTimer = null;
     window.addEventListener('resize', () => {
-        if (resizeScheduled) return;
-        resizeScheduled = true;
-        requestAnimationFrame(() => {
-            resizeScheduled = false;
+        if (resizeTimer) clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            resizeTimer = null;
             handleResize();
-        });
+        }, 200);
     });
 
     syncContentTop(window.innerHeight);
@@ -143,7 +146,12 @@ document.addEventListener('DOMContentLoaded', () => {
         return { words, articles };
     };
 
-    const loadWords = (topic = 'TOP', edition = 'JP', count = 50, frictionAir = 0.001, restitution = 1, excluded_words = default_excluded_words) => {
+    const MIN_FONT_SIZE = 16;
+
+    const loadWords = (topic = 'TOP', edition = 'JP', count = 50, frictionAir = 0.001, restitution = 1, excluded_words = default_excluded_words, maxFontSize = 80) => {
+        // Guard against a max below the fixed minimum, which would invert the
+        // size scale and produce zero/negative font sizes.
+        const maxSize = Math.max(maxFontSize, MIN_FONT_SIZE + 1);
         const excludedList = Array.isArray(excluded_words) ? excluded_words : String(excluded_words).split(',');
         const excludedSet = new Set(excludedList.map(s => s.trim().toLowerCase()).filter(Boolean));
 
@@ -158,7 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const freqRange = (maxFreq - minFreq) || 1;
 
                 words.forEach(w => {
-                    const size = 16 + ((w.freq - minFreq) / freqRange) * 64;
+                    const size = MIN_FONT_SIZE + ((w.freq - minFreq) / freqRange) * (maxSize - MIN_FONT_SIZE);
                     const texture = createWordTexture(w.word, size);
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
@@ -290,27 +298,87 @@ document.addEventListener('DOMContentLoaded', () => {
         selectAtPoint(event.mouse.position);
     });
 
-    // Touch tap = select. Listeners are passive so scrolling stays on the fast
-    // (compositor) path. A gesture only counts as a tap when the finger barely
-    // moved and lifted quickly; longer gestures are scrolls, left to the browser.
-    let touchStart = null;
+    // --- Touch interaction -------------------------------------------------
+    // Default touches (empty canvas) stay on the browser's fast, passive scroll
+    // path. We only take over the gesture when the finger lands on a word:
+    //   - drag  -> the physics body follows the finger, then is "thrown" on lift
+    //   - tap    -> select the word and highlight its articles
+    //   - tap on empty space -> clear the selection
+    // The (non-passive) move listener is attached ONLY for the duration of a
+    // drag, so when the user is scrolling there is no non-passive touchmove
+    // handler to slow it down.
+    const canvasPoint = (touch) => {
+        const rect = render.canvas.getBoundingClientRect();
+        return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+    };
+
+    let touchStart = null;              // for tap detection
+    let dragBody = null;
+    let dragOffset = { x: 0, y: 0 };    // finger position relative to body center
+    let dragPrev = { x: 0, y: 0 };      // previous target, for throw velocity
+    let dragVelocity = { x: 0, y: 0 };
+
+    const onTouchDragMove = (event) => {
+        if (!dragBody || event.touches.length !== 1) return;
+        event.preventDefault();         // hold the page still while dragging
+        const point = canvasPoint(event.touches[0]);
+        const target = { x: point.x - dragOffset.x, y: point.y - dragOffset.y };
+        dragVelocity = { x: target.x - dragPrev.x, y: target.y - dragPrev.y };
+        dragPrev = target;
+        Body.setPosition(dragBody, target);
+        Body.setVelocity(dragBody, { x: 0, y: 0 });
+    };
+
+    const stopTouchDrag = () => {
+        render.canvas.removeEventListener('touchmove', onTouchDragMove);
+        dragBody = null;
+        touchStart = null;
+    };
+
     render.canvas.addEventListener('touchstart', (event) => {
-        touchStart = event.touches.length === 1
-            ? { x: event.touches[0].clientX, y: event.touches[0].clientY, time: Date.now() }
-            : null;
-    }, { passive: true });
+        if (event.touches.length !== 1) { stopTouchDrag(); return; }
+        const touch = event.touches[0];
+        touchStart = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+        const point = canvasPoint(touch);
+        const hit = Matter.Query.point(engine.world.bodies.filter(b => !b.isStatic), point);
+        if (hit.length > 0) {
+            dragBody = hit[0];
+            dragOffset = { x: point.x - dragBody.position.x, y: point.y - dragBody.position.y };
+            dragPrev = { x: dragBody.position.x, y: dragBody.position.y };
+            dragVelocity = { x: 0, y: 0 };
+            event.preventDefault();     // claim the gesture: no page scroll
+            render.canvas.addEventListener('touchmove', onTouchDragMove, { passive: false });
+        } else {
+            dragBody = null;            // empty space -> leave scrolling to the browser
+        }
+    }, { passive: false });
 
     render.canvas.addEventListener('touchend', (event) => {
-        if (!touchStart) return;
+        render.canvas.removeEventListener('touchmove', onTouchDragMove);
         const touch = event.changedTouches[0];
-        const moved = Math.hypot(touch.clientX - touchStart.x, touch.clientY - touchStart.y);
-        const elapsed = Date.now() - touchStart.time;
-        touchStart = null;
-        if (moved < 10 && elapsed < 400) {
-            const rect = render.canvas.getBoundingClientRect();
-            selectAtPoint({ x: touch.clientX - rect.left, y: touch.clientY - rect.top });
+
+        if (dragBody) {
+            // Throw the word with the finger's final velocity (clamped so a
+            // fast flick can't exceed the simulation's speed cap).
+            const clamp = (v) => Math.max(-MAX_SPEED, Math.min(MAX_SPEED, v));
+            Body.setVelocity(dragBody, { x: clamp(dragVelocity.x), y: clamp(dragVelocity.y) });
         }
-    }, { passive: true });
+
+        // A gesture that barely moved is a tap: select the word under it, or
+        // clear the selection when it landed on empty space.
+        if (touchStart && touch) {
+            const moved = Math.hypot(touch.clientX - touchStart.x, touch.clientY - touchStart.y);
+            const elapsed = Date.now() - touchStart.time;
+            if (moved < 10 && elapsed < 400) {
+                selectAtPoint(canvasPoint(touch));
+            }
+        }
+
+        dragBody = null;
+        touchStart = null;
+    }, { passive: false });
+
+    render.canvas.addEventListener('touchcancel', stopTouchDrag);
 
     // Pause physics + rendering while the canvas is scrolled out of view, so
     // reading the Articles section stays smooth and doesn't burn battery.
@@ -351,12 +419,16 @@ document.addEventListener('DOMContentLoaded', () => {
         overlay.classList.toggle('active', isOpen);
         button.setAttribute('aria-expanded', String(isOpen));
         nav.setAttribute('aria-hidden', String(!isOpen));
+        // Lock the page behind the sidebar so touch scrolling stays inside the
+        // panel instead of leaking to the page underneath.
+        document.body.style.overflow = isOpen ? 'hidden' : '';
     };
 
     const reloadWords = () => {
         const topic = document.getElementById('category-select').value;
         const edition = document.getElementById('edition-select').value;
         const count = parseInt(document.getElementById('word-count').value);
+        const maxFontSize = parseFloat(document.getElementById('max-font-size').value);
         const frictionAir = parseFloat(document.getElementById('friction-air').value);
         const restitution = parseFloat(document.getElementById('restitution').value);
         const maxSpeed = parseFloat(document.getElementById('max-speed').value);
@@ -372,7 +444,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         World.clear(engine.world, false);
         createWalls();
-        loadWords(topic, edition, count, frictionAir, restitution, excluded_words);
+        loadWords(topic, edition, count, frictionAir, restitution, excluded_words, maxFontSize);
         World.add(engine.world, mouseConstraint);
     };
 
@@ -456,6 +528,7 @@ document.addEventListener('DOMContentLoaded', () => {
             edition: document.getElementById('edition-select').value,
             category: document.getElementById('category-select').value,
             wordCount: document.getElementById('word-count').value,
+            maxFontSize: document.getElementById('max-font-size').value,
             frictionAir: document.getElementById('friction-air').value,
             restitution: document.getElementById('restitution').value,
             maxSpeed: document.getElementById('max-speed').value,
@@ -487,6 +560,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setValue('edition-select', data.edition);
         setValue('category-select', data.category);
         setValue('word-count', data.wordCount);
+        setValue('max-font-size', data.maxFontSize);
         setValue('friction-air', data.frictionAir);
         setValue('restitution', data.restitution);
         setValue('max-speed', data.maxSpeed);
