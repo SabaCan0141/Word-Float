@@ -17,7 +17,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     Render.run(render);
-    Runner.run(Runner.create(), engine);
+    const runner = Runner.create();
+    Runner.run(runner, engine);
 
     let MAX_SPEED = 30;
     let selectedBody = null;
@@ -244,48 +245,20 @@ document.addEventListener('DOMContentLoaded', () => {
     mouse.element.removeEventListener('mousewheel', mouse.mousewheel);
     mouse.element.removeEventListener('DOMMouseScroll', mouse.mousewheel);
 
-    // Touch: only start a drag when the touch lands on a word; otherwise let the
-    // page scroll natively (so the Articles section below is reachable on phones).
-    // Matter binds its own touch listeners that always preventDefault (blocking
-    // scroll), so detach them and drive the shared `mouse` object ourselves after
-    // a hit-test. Matter reuses the mouse-event handlers for touch, so the
-    // references removed here are exactly the ones it registered.
+    // Matter binds its own (non-passive) touch listeners that call preventDefault
+    // on every touchmove, which forces slow main-thread scrolling and makes the
+    // page stutter on phones. Detach them so the page scrolls smoothly/natively.
+    // Word dragging stays a desktop (mouse) interaction; on touch we support
+    // tap-to-select instead (see below). Matter reuses the mouse-event handlers
+    // for touch, so these are exactly the references it registered.
     mouse.element.removeEventListener('touchstart', mouse.mousedown);
     mouse.element.removeEventListener('touchmove', mouse.mousemove);
     mouse.element.removeEventListener('touchend', mouse.mouseup);
 
-    let touchDragging = false;
-    const bodyUnderTouch = (touch) => {
-        const rect = render.canvas.getBoundingClientRect();
-        const point = { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
-        return Matter.Query.point(
-            engine.world.bodies.filter(body => !body.isStatic), point
-        ).length > 0;
-    };
-
-    render.canvas.addEventListener('touchstart', (event) => {
-        if (event.touches.length === 1 && bodyUnderTouch(event.touches[0])) {
-            touchDragging = true;
-            mouse.mousedown(event); // grabs the body and preventDefaults the scroll
-        }
-    }, { passive: false });
-
-    render.canvas.addEventListener('touchmove', (event) => {
-        if (touchDragging) {
-            mouse.mousemove(event); // preventDefaults internally while dragging
-        }
-    }, { passive: false });
-
-    render.canvas.addEventListener('touchend', (event) => {
-        if (touchDragging) {
-            mouse.mouseup(event);
-            touchDragging = false;
-        }
-    }, { passive: false });
-
-    Events.on(mouseConstraint, 'mousedown', (event) => {
-        const mousePosition = event.mouse.position;
-        const bodies = Matter.Query.point(engine.world.bodies, mousePosition);
+    // Highlight the word under `point` (canvas coordinates) and its articles,
+    // clearing any previous selection. Shared by mouse clicks and touch taps.
+    const selectAtPoint = (point) => {
+        const bodies = Matter.Query.point(engine.world.bodies, point);
 
         if (selectedBody) {
             selectedBody.render.sprite.texture = selectedBody.originalTexture;
@@ -311,7 +284,52 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         }
+    };
+
+    Events.on(mouseConstraint, 'mousedown', (event) => {
+        selectAtPoint(event.mouse.position);
     });
+
+    // Touch tap = select. Listeners are passive so scrolling stays on the fast
+    // (compositor) path. A gesture only counts as a tap when the finger barely
+    // moved and lifted quickly; longer gestures are scrolls, left to the browser.
+    let touchStart = null;
+    render.canvas.addEventListener('touchstart', (event) => {
+        touchStart = event.touches.length === 1
+            ? { x: event.touches[0].clientX, y: event.touches[0].clientY, time: Date.now() }
+            : null;
+    }, { passive: true });
+
+    render.canvas.addEventListener('touchend', (event) => {
+        if (!touchStart) return;
+        const touch = event.changedTouches[0];
+        const moved = Math.hypot(touch.clientX - touchStart.x, touch.clientY - touchStart.y);
+        const elapsed = Date.now() - touchStart.time;
+        touchStart = null;
+        if (moved < 10 && elapsed < 400) {
+            const rect = render.canvas.getBoundingClientRect();
+            selectAtPoint({ x: touch.clientX - rect.left, y: touch.clientY - rect.top });
+        }
+    }, { passive: true });
+
+    // Pause physics + rendering while the canvas is scrolled out of view, so
+    // reading the Articles section stays smooth and doesn't burn battery.
+    if ('IntersectionObserver' in window) {
+        let simRunning = true;
+        const observer = new IntersectionObserver((entries) => {
+            const visible = entries.some(entry => entry.isIntersecting);
+            if (visible && !simRunning) {
+                Runner.run(runner, engine);
+                Render.run(render);
+                simRunning = true;
+            } else if (!visible && simRunning) {
+                Runner.stop(runner);
+                Render.stop(render);
+                simRunning = false;
+            }
+        });
+        observer.observe(render.canvas);
+    }
 
     Events.on(engine, 'beforeUpdate', () => {
         engine.world.bodies.forEach(body => {

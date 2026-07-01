@@ -23,6 +23,9 @@ canvas {
     left: 0;
     display: block;
     background: #ffffff;
+    /* Let the browser own vertical scrolling on the fast path (no jank) and
+       remove the tap delay; word dragging is handled via mouse on desktop. */
+    touch-action: manipulation;
 }
 
 /* Header */
@@ -421,15 +424,19 @@ canvas {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    font-size: 14px;
-    color: #161616;
+    font-size: 13px;
+    color: #6f6f6f;
     text-decoration: none;
     transition: color .2s;
 }
 
-.nav__github:hover { color: #0f62fe; }
+.nav__github:hover { color: #161616; }
 
-.nav__github-icon { flex-shrink: 0; }
+.nav__github-icon {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+}
 
 /* Sidebar backdrop (activated on mobile) */
 .nav-overlay {
