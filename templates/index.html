@@ -52,14 +52,14 @@
               <li>
                 <h5>関連記事の参照</h5>
                 <p class="nav__text">特定の単語オブジェクトをクリックすると、その単語を含むニュース記事が画面下部の "Articles"
-                  セクションにハイライト表示されます。記事カードをクリックすることで、元のニュースソースを新しいタブで開きます。</p>
+                  セクションでハイライト表示され、リストの先頭に並び替わります。記事カードをクリックすることで、元のニュースソースを新しいタブで開きます。</p>
               </li>
             </ul>
 
             <hr>
 
             <h4>設定パネル</h4>
-            <p class="nav__text">画面左上のメニューボタンから設定パネルへアクセスできます。各種パラメータを変更した際は、 "Reload" ボタンを押すことでシミュレーションに反映されます。</p>
+            <p class="nav__text">画面左上のメニューボタンから設定パネルへアクセスできます。各パラメータはスライダーのドラッグ、または数値ボックスへの直接入力で設定できます。変更後は "Reload" ボタンを押すことでシミュレーションに反映されます。</p>
             <ul class="nav__list">
               <li>
                 <h5>Edition</h5>
@@ -74,16 +74,20 @@
                 <p class="nav__text">出現頻度が高い上位N個の単語を抽出して表示します。数値を大きくすると、より多くの単語が表示されます。</p>
               </li>
               <li>
-                <h5>Max Font Size (最大文字サイズ)</h5>
-                <p class="nav__text">最も出現頻度が高い単語の文字サイズ（ピクセル）を指定します。値を大きくすると、頻出語がより大きく表示されます。最小サイズは固定です。</p>
+                <h5>Font Size (文字サイズ)</h5>
+                <p class="nav__text">単語の文字サイズ（ピクセル）の最小値・最大値を範囲スライダーで指定します。出現頻度が最も低い単語が最小値、最も高い単語が最大値のサイズで表示され、その間は頻度に応じて補間されます。</p>
               </li>
               <li>
                 <h5>Air Resistance (空気抵抗)</h5>
-                <p class="nav__text">オブジェクトの動きに対する空気抵抗の係数を設定します。値が0に近いほど、オブジェクトは減速しにくくなります。</p>
+                <p class="nav__text">オブジェクトの動きに対する空気抵抗の強さを設定します。値が小さいほど減速しにくく漂い続け、大きいほど早く止まります。</p>
               </li>
               <li>
                 <h5>Restitution Coefficient (反発係数)</h5>
                 <p class="nav__text">オブジェクトが他のオブジェクトや壁と衝突した際の反発の強さを設定します。値が1のとき完全弾性衝突に近くなり、高く跳ね返ります。</p>
+              </li>
+              <li>
+                <h5>Max Speed (最大速度)</h5>
+                <p class="nav__text">オブジェクトが移動できる速度の上限を設定します。値を大きくすると、より速く飛び回るようになります。</p>
               </li>
               <li>
                 <h5>Rotation (回転)</h5>
@@ -97,7 +101,7 @@
             </ul>
           </div>
         </details>
-        <details class="nav__accordion">
+        <details class="nav__accordion" open>
           <summary class="nav__accordion-header">
             <h3>Settings</h3>
           </summary>
@@ -121,20 +125,43 @@
               <option value="HEALTH">Health</option>
             </select>
 
-            <label for="word-count">Top N</label>
-            <input type="number" id="word-count" value="50" step="1" min="10" max="100" />
+            <div class="setting-head">
+              <label for="word-count">Top N</label>
+              <input type="number" class="setting-num" id="word-count-value" value="50" step="1" min="10" max="200" />
+            </div>
+            <input type="range" id="word-count" value="50" step="1" min="10" max="200" />
 
-            <label for="max-font-size">Max Font Size</label>
-            <input type="number" id="max-font-size" value="80" step="1" min="20" max="200" />
+            <div class="setting-head">
+              <label for="max-font-size">Font Size</label>
+              <span class="setting-nums">
+                <input type="number" class="setting-num" id="min-font-size-value" value="16" step="1" min="8" max="200" />
+                <span class="setting-nums__sep">–</span>
+                <input type="number" class="setting-num" id="max-font-size-value" value="80" step="1" min="8" max="200" />
+                <span class="setting-nums__unit">px</span>
+              </span>
+            </div>
+            <div class="range-slider" id="font-size-range">
+              <input type="range" id="min-font-size" value="16" step="1" min="8" max="200" />
+              <input type="range" id="max-font-size" value="80" step="1" min="8" max="200" />
+            </div>
 
-            <label for="friction-air">Air Resistance</label>
-            <input type="number" id="friction-air" value="0.001" step="0.001" min="0" max="1" />
+            <div class="setting-head">
+              <label for="friction-air">Air Resistance</label>
+              <input type="number" class="setting-num" id="friction-air-value" value="1" step="1" min="0" max="50" />
+            </div>
+            <input type="range" id="friction-air" value="1" step="1" min="0" max="50" />
 
-            <label for="restitution">Restitution Coefficient</label>
-            <input type="number" id="restitution" value="1" step="0.1" min="0" max="2" />
+            <div class="setting-head">
+              <label for="restitution">Restitution Coefficient</label>
+              <input type="number" class="setting-num" id="restitution-value" value="1" step="0.1" min="0" max="2" />
+            </div>
+            <input type="range" id="restitution" value="1" step="0.1" min="0" max="2" />
 
-            <label for="max-speed">Max Speed</label>
-            <input type="number" id="max-speed" value="30" step="1" min="1" max="100" />
+            <div class="setting-head">
+              <label for="max-speed">Max Speed</label>
+              <input type="number" class="setting-num" id="max-speed-value" value="30" step="1" min="1" max="100" />
+            </div>
+            <input type="range" id="max-speed" value="30" step="1" min="1" max="100" />
 
             <label class="nav__toggle">
               <input type="checkbox" id="rotation-toggle" />

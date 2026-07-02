@@ -148,10 +148,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const MIN_FONT_SIZE = 16;
 
-    const loadWords = (topic = 'TOP', edition = 'JP', count = 50, frictionAir = 0.001, restitution = 1, excluded_words = default_excluded_words, maxFontSize = 80) => {
-        // Guard against a max below the fixed minimum, which would invert the
-        // size scale and produce zero/negative font sizes.
-        const maxSize = Math.max(maxFontSize, MIN_FONT_SIZE + 1);
+    const loadWords = (topic = 'TOP', edition = 'JP', count = 50, frictionAir = 0.001, restitution = 1, excluded_words = default_excluded_words, maxFontSize = 80, minFontSize = MIN_FONT_SIZE) => {
+        // Clamp the min to a sane floor, then keep the max strictly above it so
+        // the size scale never inverts and produces zero/negative font sizes.
+        const minSize = Math.max(1, minFontSize);
+        const maxSize = Math.max(maxFontSize, minSize + 1);
         const excludedList = Array.isArray(excluded_words) ? excluded_words : String(excluded_words).split(',');
         const excludedSet = new Set(excludedList.map(s => s.trim().toLowerCase()).filter(Boolean));
 
@@ -166,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const freqRange = (maxFreq - minFreq) || 1;
 
                 words.forEach(w => {
-                    const size = MIN_FONT_SIZE + ((w.freq - minFreq) / freqRange) * (maxSize - MIN_FONT_SIZE);
+                    const size = minSize + ((w.freq - minFreq) / freqRange) * (maxSize - minSize);
                     const texture = createWordTexture(w.word, size);
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
@@ -292,6 +293,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         }
+
+        reorderArticles();
+    };
+
+    // Float highlighted article cards to the top; otherwise fall back to the
+    // original (article-id) order. Called after every selection change.
+    const reorderArticles = () => {
+        const container = document.getElementById('news-container');
+        const cards = Array.from(container.querySelectorAll('.card__wrapper'));
+        cards.sort((a, b) => {
+            const ah = a.classList.contains('highlight') ? 0 : 1;
+            const bh = b.classList.contains('highlight') ? 0 : 1;
+            if (ah !== bh) return ah - bh;
+            return Number(a.dataset.articleId) - Number(b.dataset.articleId);
+        });
+        // appendChild moves existing nodes, so this reorders in place.
+        cards.forEach(card => container.appendChild(card));
     };
 
     Events.on(mouseConstraint, 'mousedown', (event) => {
@@ -429,7 +447,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const edition = document.getElementById('edition-select').value;
         const count = parseInt(document.getElementById('word-count').value);
         const maxFontSize = parseFloat(document.getElementById('max-font-size').value);
-        const frictionAir = parseFloat(document.getElementById('friction-air').value);
+        const minFontSize = parseFloat(document.getElementById('min-font-size').value);
+        // Air Resistance is shown on a friendly 0–50 integer scale; Matter's
+        // frictionAir wants the tiny real value, so scale it back down.
+        const frictionAir = parseFloat(document.getElementById('friction-air').value) / 1000;
         const restitution = parseFloat(document.getElementById('restitution').value);
         const maxSpeed = parseFloat(document.getElementById('max-speed').value);
         const excluded_words = Array.from(document.querySelectorAll('.excluded-words-text')).map(element => element.innerText).join(',');
@@ -444,8 +465,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         World.clear(engine.world, false);
         createWalls();
-        loadWords(topic, edition, count, frictionAir, restitution, excluded_words, maxFontSize);
+        loadWords(topic, edition, count, frictionAir, restitution, excluded_words, maxFontSize, minFontSize);
         World.add(engine.world, mouseConstraint);
+
+        // Reveal the freshly-loaded words: close the sidebar if it's open. (On the
+        // initial page-load call the panel isn't open, so this is a no-op then.)
+        const nav = document.getElementById('nav-menu');
+        if (nav.classList.contains('active')) {
+            toggleMenu(document.querySelector('.hamburger'));
+        }
     };
 
     document.querySelector('.hamburger').addEventListener('click', function() {
@@ -529,6 +557,7 @@ document.addEventListener('DOMContentLoaded', () => {
             category: document.getElementById('category-select').value,
             wordCount: document.getElementById('word-count').value,
             maxFontSize: document.getElementById('max-font-size').value,
+            minFontSize: document.getElementById('min-font-size').value,
             frictionAir: document.getElementById('friction-air').value,
             restitution: document.getElementById('restitution').value,
             maxSpeed: document.getElementById('max-speed').value,
@@ -561,14 +590,86 @@ document.addEventListener('DOMContentLoaded', () => {
         setValue('category-select', data.category);
         setValue('word-count', data.wordCount);
         setValue('max-font-size', data.maxFontSize);
-        setValue('friction-air', data.frictionAir);
+        setValue('min-font-size', data.minFontSize);
+        // Migrate settings saved under the old actual-unit air resistance
+        // (e.g. 0.001) onto the new 0–50 integer scale.
+        let frictionAirValue = data.frictionAir;
+        if (frictionAirValue != null && parseFloat(frictionAirValue) > 0 && parseFloat(frictionAirValue) < 1) {
+            frictionAirValue = Math.round(parseFloat(frictionAirValue) * 1000);
+        }
+        setValue('friction-air', frictionAirValue);
         setValue('restitution', data.restitution);
         setValue('max-speed', data.maxSpeed);
         document.getElementById('rotation-toggle').checked = !!data.rotation;
         (data.excludedWords || []).forEach(word => {
             if (word && word.trim()) createLable(word.trim());
         });
+        syncSettingDisplays();
     }
+
+    // Slider ↔ editable value-box pairs. The slider is the source of truth; the
+    // box mirrors it and can also be typed into to drive the slider.
+    const SETTING_PAIRS = [
+        { slider: 'word-count',    box: 'word-count-value' },
+        { slider: 'min-font-size', box: 'min-font-size-value' },
+        { slider: 'max-font-size', box: 'max-font-size-value' },
+        { slider: 'friction-air',  box: 'friction-air-value' },
+        { slider: 'restitution',   box: 'restitution-value' },
+        { slider: 'max-speed',     box: 'max-speed-value' },
+    ];
+
+    // Paint the blue segment between the two font-size thumbs.
+    function updateFontFill() {
+        const range = document.getElementById('font-size-range');
+        const minEl = document.getElementById('min-font-size');
+        const maxEl = document.getElementById('max-font-size');
+        const lo = parseFloat(minEl.min);
+        const hi = parseFloat(minEl.max);
+        const pct = v => ((parseFloat(v) - lo) / (hi - lo)) * 100;
+        range.style.setProperty('--range-min', pct(minEl.value) + '%');
+        range.style.setProperty('--range-max', pct(maxEl.value) + '%');
+    }
+
+    // Normalize everything: stop the font thumbs from crossing, then mirror each
+    // slider's value into its box and repaint the font fill.
+    function syncSettingDisplays() {
+        const minEl = document.getElementById('min-font-size');
+        const maxEl = document.getElementById('max-font-size');
+        const minBox = document.getElementById('min-font-size-value');
+        if (parseInt(minEl.value, 10) > parseInt(maxEl.value, 10)) {
+            // Push the other thumb along with whichever one the user is driving.
+            if (document.activeElement === minEl || document.activeElement === minBox) {
+                maxEl.value = minEl.value;
+            } else {
+                minEl.value = maxEl.value;
+            }
+        }
+        SETTING_PAIRS.forEach(({ slider, box }) => {
+            document.getElementById(box).value = document.getElementById(slider).value;
+        });
+        updateFontFill();
+    }
+
+    SETTING_PAIRS.forEach(({ slider: sId, box: bId }) => {
+        const slider = document.getElementById(sId);
+        const box = document.getElementById(bId);
+        slider.addEventListener('input', syncSettingDisplays);
+        // While typing, drive the slider live (clamped) without reformatting the
+        // box; on commit (blur/Enter) run a full normalize.
+        box.addEventListener('input', () => {
+            const v = parseFloat(box.value);
+            if (isNaN(v)) return;
+            const lo = parseFloat(slider.min);
+            const hi = parseFloat(slider.max);
+            slider.value = Math.min(hi, Math.max(lo, v));
+            updateFontFill();
+        });
+        box.addEventListener('change', syncSettingDisplays);
+    });
+
+    // Initialize the boxes and font fill from the HTML defaults; restoreSettings
+    // (below) re-runs this if it loads saved values.
+    syncSettingDisplays();
 
     restoreSettings();
     // reloadWords() reads the (now restored) panel, applies MAX_SPEED / rotation,
