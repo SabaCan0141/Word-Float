@@ -361,9 +361,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Float highlighted article cards to the top; otherwise fall back to the
     // original (article-id) order. Called after every selection change.
+    // Uses the FLIP technique: snapshot positions before the DOM reorder, then
+    // animate each card from its old position to its new one.
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     const reorderArticles = () => {
         const container = document.getElementById('news-container');
         const cards = Array.from(container.querySelectorAll('.card__wrapper'));
+
+        const firstRects = new Map();
+        if (!reduceMotion.matches) {
+            cards.forEach(card => firstRects.set(card, card.getBoundingClientRect()));
+        }
+
         cards.sort((a, b) => {
             const ah = a.classList.contains('highlight') ? 0 : 1;
             const bh = b.classList.contains('highlight') ? 0 : 1;
@@ -372,6 +381,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         // appendChild moves existing nodes, so this reorders in place.
         cards.forEach(card => container.appendChild(card));
+
+        firstRects.forEach((first, card) => {
+            const last = card.getBoundingClientRect();
+            const dx = first.left - last.left;
+            const dy = first.top - last.top;
+            if (dx || dy) {
+                card.animate(
+                    [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }],
+                    { duration: 400, easing: 'cubic-bezier(0.2, 0, 0.2, 1)' }
+                );
+            }
+        });
     };
 
     Events.on(mouseConstraint, 'mousedown', (event) => {
