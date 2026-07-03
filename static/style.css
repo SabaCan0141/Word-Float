@@ -454,6 +454,13 @@ canvas {
     gap: 16px;
 }
 
+/* Error message shown when /api/news fails to load */
+.news-error {
+    grid-column: 1 / -1;
+    margin: 24px 0;
+    color: #a2191f;
+}
+
 /* Card */
 .card__wrapper {
     margin: 0;

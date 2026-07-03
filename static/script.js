@@ -157,7 +157,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const excludedSet = new Set(excludedList.map(s => s.trim().toLowerCase()).filter(Boolean));
 
         fetch(`/api/news?topic=${encodeURIComponent(topic)}&edition=${encodeURIComponent(edition)}&limit=${count}`)
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) {
+                    const err = new Error(`HTTP ${res.status}`);
+                    err.status = res.status;
+                    throw err;
+                }
+                return res.json();
+            })
             .then(raw => {
                 const { words: allWords, articles } = adaptResponse(raw);
                 const words = allWords.filter(w => !excludedSet.has(w.word.toLowerCase()));
@@ -214,21 +221,76 @@ document.addEventListener('DOMContentLoaded', () => {
                     cardWrapper.className = 'card__wrapper';
                     cardWrapper.dataset.articleId = article.id;
                     cardWrapper.addEventListener('click', () => {
-                        window.open(article.url, '_blank');
+                        window.open(article.url, '_blank', 'noopener,noreferrer');
                     });
 
+                    // Build the card with DOM APIs and textContent instead of a
+                    // template string + innerHTML: article.title/description come
+                    // from Google News RSS and are html.unescape'd server-side, so
+                    // they can contain markup that innerHTML would execute (XSS).
                     const card = document.createElement('article');
                     card.className = 'card';
-                    card.innerHTML = `
-                        <div class="card__header">
-                            <p class="card__title">${article.title}</p>
-                        </div>
-                        <div class="card__body">
-                            <p class="card__text">${article.description}</p>
-                        </div>
-                    `;
+
+                    const header = document.createElement('div');
+                    header.className = 'card__header';
+                    const title = document.createElement('p');
+                    title.className = 'card__title';
+                    title.textContent = article.title;
+                    header.appendChild(title);
+
+                    const body = document.createElement('div');
+                    body.className = 'card__body';
+                    const text = document.createElement('p');
+                    text.className = 'card__text';
+                    text.textContent = article.description;
+                    body.appendChild(text);
+
+                    card.appendChild(header);
+                    card.appendChild(body);
                     cardWrapper.appendChild(card);
                     newsContainer.appendChild(cardWrapper);
+                });
+            })
+            .catch((err) => {
+                const newsContainer = document.getElementById('news-container');
+                newsContainer.innerHTML = '';
+                const msg = document.createElement('p');
+                msg.className = 'news-error';
+                msg.textContent = 'ニュースの取得に失敗しました。時間をおいて再読み込みしてください。';
+                newsContainer.appendChild(msg);
+
+                // Also float a few red error words on the canvas so the failure
+                // is visible even when the user hasn't scrolled to Articles.
+                // No word/article_ids props -> selectAtPoint ignores them (not
+                // clickable); World.clear on Reload removes them like any body.
+                const errorWords = ['Failed', 'Error', '取得失敗'];
+                if (err && err.status) errorWords.push(String(err.status));
+
+                const size = 40;
+                errorWords.forEach(word => {
+                    const texture = createWordTexture(word, size, '#da1e28');
+                    const ctx = document.createElement('canvas').getContext('2d');
+                    ctx.font = `600 ${size}px 'IBM Plex Sans'`;
+                    const width = ctx.measureText(word).width;
+
+                    const body = Bodies.rectangle(
+                        Math.random() * (window.innerWidth - 100) + 50,
+                        Math.random() * (window.innerHeight - 100) + 50,
+                        width,
+                        size,
+                        {
+                            render: { sprite: { texture, xScale: 1, yScale: 1 } },
+                            restitution: 1,
+                            frictionAir: 0.001
+                        }
+                    );
+                    body.defaultInertia = body.inertia;
+                    applyRotation(body);
+                    Body.setVelocity(body, {
+                        x: (Math.random() - 0.5) * 2,
+                        y: (Math.random() - 0.5) * 2
+                    });
+                    World.add(engine.world, body);
                 });
             });
     };
@@ -400,8 +462,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Pause physics + rendering while the canvas is scrolled out of view, so
     // reading the Articles section stays smooth and doesn't burn battery.
+    // Hoisted out of the IntersectionObserver block so the keydown handler can
+    // read it (word key-controls are disabled while the canvas is off-screen).
+    // Defaults to true; on browsers without IntersectionObserver it stays true.
+    let simRunning = true;
     if ('IntersectionObserver' in window) {
-        let simRunning = true;
         const observer = new IntersectionObserver((entries) => {
             const visible = entries.some(entry => entry.isIntersecting);
             if (visible && !simRunning) {
@@ -670,6 +735,84 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize the boxes and font fill from the HTML defaults; restoreSettings
     // (below) re-runs this if it loads saved values.
     syncSettingDisplays();
+
+    // --- Keyboard word controls --------------------------------------------
+    // WASD nudge every word one direction, F boosts (along its velocity, or a
+    // random direction when nearly still), R re-scatters all words. Velocity is
+    // added, never overwritten, so the beforeUpdate MAX_SPEED clamp still bounds
+    // everything. One application per physical keydown (repeats are ignored).
+    const KEY_IMPULSE = 3;      // WASD / F の1回あたりの加算速度
+    const STILL_EPS = 0.1;      // F: この速さ未満なら「静止」とみなしランダム方向
+
+    const wordBodies = () => engine.world.bodies.filter(b => !b.isStatic);
+
+    const addVelocity = (body, dx, dy) => {
+        Body.setVelocity(body, {
+            x: body.velocity.x + dx,
+            y: body.velocity.y + dy
+        });
+    };
+
+    const DIRECTIONS = {
+        w: { x: 0, y: -1 },
+        a: { x: -1, y: 0 },
+        s: { x: 0, y: 1 },
+        d: { x: 1, y: 0 },
+    };
+
+    document.addEventListener('keydown', (event) => {
+        // Ignore OS key-repeat (physical presses only), browser shortcuts
+        // (Ctrl/Cmd/Alt), typing in inputs, and when the canvas is off-screen.
+        if (event.repeat) return;
+        if (event.ctrlKey || event.metaKey || event.altKey) return;
+        const t = event.target;
+        if (t instanceof HTMLElement &&
+            (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+        if (!simRunning) return;
+
+        const key = event.key.toLowerCase();
+
+        if (DIRECTIONS[key]) {
+            // WASD: 一方向インパルス
+            const dir = DIRECTIONS[key];
+            wordBodies().forEach(body => {
+                addVelocity(body, dir.x * KEY_IMPULSE, dir.y * KEY_IMPULSE);
+            });
+            event.preventDefault();
+        } else if (key === 'f') {
+            // F: 動いていれば速度方向、静止していればランダム方向
+            wordBodies().forEach(body => {
+                const vx = body.velocity.x, vy = body.velocity.y;
+                const speed = Math.hypot(vx, vy);
+                let ux, uy;
+                if (speed >= STILL_EPS) {
+                    ux = vx / speed;
+                    uy = vy / speed;
+                } else {
+                    const theta = Math.random() * Math.PI * 2;
+                    ux = Math.cos(theta);
+                    uy = Math.sin(theta);
+                }
+                addVelocity(body, ux * KEY_IMPULSE, uy * KEY_IMPULSE);
+            });
+            event.preventDefault();
+        } else if (key === 'r') {
+            // R: 位置・速度のリセット（API再取得はしない）
+            const margin = 50;
+            wordBodies().forEach(body => {
+                Body.setPosition(body, {
+                    x: Math.random() * (window.innerWidth - margin * 2) + margin,
+                    y: Math.random() * (window.innerHeight - margin * 2) + margin
+                });
+                Body.setVelocity(body, {
+                    x: (Math.random() - 0.5) * 2,
+                    y: (Math.random() - 0.5) * 2
+                });
+                Body.setAngularVelocity(body, 0);
+            });
+            event.preventDefault();
+        }
+    });
 
     restoreSettings();
     // reloadWords() reads the (now restored) panel, applies MAX_SPEED / rotation,
