@@ -1,6 +1,16 @@
 document.addEventListener('DOMContentLoaded', () => {
     const { Engine, Render, Runner, World, Bodies, Body, Mouse, MouseConstraint, Events } = Matter;
 
+    // Show the backend version in the sidebar footer.
+    fetch('/api/healthz')
+        .then(r => (r.ok ? r.json() : null))
+        .then(data => {
+            if (data && data.version) {
+                document.getElementById('app-version').textContent = `v${data.version}`;
+            }
+        })
+        .catch(() => {});
+
     const engine = Engine.create();
     engine.gravity.y = 0;
     engine.gravity.x = 0;

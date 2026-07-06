@@ -124,14 +124,46 @@ _EN_HEADLINE_CLICHES = {
 _EN_DROP = _EN_STOPWORDS | _EN_HEADLINE_CLICHES
 
 
-def _tokenize_en(text: str) -> list[str]:
-    out: list[str] = []
+def _tokenize_en_pairs(text: str) -> list[tuple[str, str]]:
+    """Return ``(key, surface)`` pairs: lowercase counting key + raw surface."""
+    out: list[tuple[str, str]] = []
     for raw in _EN_TOKEN_RE.findall(text):
         token = raw.lower()
         if len(token) < 2 or token in _EN_DROP:
             continue
-        out.append(token)
+        out.append((token, raw))
     return out
+
+
+def _tokenize_en(text: str) -> list[str]:
+    return [key for key, _ in _tokenize_en_pairs(text)]
+
+
+# --- Display-form resolution ------------------------------------------------
+
+# If the exact-lowercase surface accounts for at least this share of a key's
+# occurrences, display lowercase. Guards against Title Case headlines making
+# ordinary words ("Market", "Chip") win the vote, while acronyms and proper
+# nouns ("AI", "Google", "NASA") — which are almost never written lowercase —
+# still surface in their canonical spelling.
+_LOWERCASE_BIAS = 0.25
+
+
+def resolve_display_forms(variants: dict[str, Counter]) -> dict[str, str]:
+    """Map each counting key to its display spelling by biased majority vote.
+
+    ``variants[key]`` counts raw surface spellings observed for ``key``.
+    Lowercase wins whenever it holds >= ``_LOWERCASE_BIAS`` of occurrences;
+    otherwise the most frequent surface wins (ties broken deterministically).
+    """
+    display: dict[str, str] = {}
+    for key, surfaces in variants.items():
+        total = sum(surfaces.values())
+        if total == 0 or surfaces.get(key, 0) >= _LOWERCASE_BIAS * total:
+            display[key] = key
+            continue
+        display[key] = max(surfaces.items(), key=lambda kv: (kv[1], kv[0]))[0]
+    return display
 
 
 # --- Public API -----------------------------------------------------------
@@ -141,6 +173,20 @@ def tokenize(text: str, lang: Lang) -> list[str]:
     if not text:
         return []
     return _tokenize_ja(text) if lang == "ja" else _tokenize_en(text)
+
+
+def tokenize_pairs(text: str, lang: Lang) -> list[tuple[str, str]]:
+    """Tokenize into ``(key, surface)`` pairs.
+
+    ``key`` is the counting/matching key (lowercase for English, normalized
+    form for Japanese); ``surface`` is the spelling as it appeared. For
+    Japanese the key doubles as the surface.
+    """
+    if not text:
+        return []
+    if lang == "ja":
+        return [(k, k) for k in _tokenize_ja(text)]
+    return _tokenize_en_pairs(text)
 
 
 def word_frequencies(texts: list[str], lang: str) -> Counter:

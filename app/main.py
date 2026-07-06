@@ -14,6 +14,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from starlette.middleware.cors import CORSMiddleware
 
+from app import __version__
 from app.config import settings
 from app.limiter import limiter
 from app.routers import news
@@ -47,7 +48,7 @@ templates = Jinja2Templates(directory=os.path.join(_BASE_DIR, "templates"))
 
 app = FastAPI(
     title="Word-Float",
-    version="2.0.0",
+    version=__version__,
     description="Visualize word frequencies from Google News RSS.",
 )
 
@@ -80,4 +81,7 @@ app.mount("/static", StaticFiles(directory=os.path.join(_BASE_DIR, "static")), n
 
 @app.get("/", include_in_schema=False)
 async def index(request: Request):
-    return templates.TemplateResponse(request, "index.html")
+    # ``version`` is used to cache-bust static assets (?v=...).
+    return templates.TemplateResponse(
+        request, "index.html", {"version": __version__}
+    )

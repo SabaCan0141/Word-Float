@@ -1,17 +1,18 @@
 """News API routes: /api/news, /api/topics, /api/editions, /api/healthz."""
 
 import logging
-from collections import Counter
+from collections import Counter, defaultdict
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Query, Request, Response
 from fastapi.responses import JSONResponse
 
+from app import __version__
 from app.cache import news_cache
 from app.limiter import RATE_LIMIT, limiter
 from app.schemas import Article, Edition, NewsResponse, Topic, Word
 from app.services import rss
-from app.services.tokenizer import tokenize, word_frequencies
+from app.services.tokenizer import resolve_display_forms, tokenize_pairs
 
 logger = logging.getLogger("wordfloat.news")
 
@@ -41,26 +42,32 @@ def build_news_response(
     """
     lang = edition.lang
     # Tokenize each article exactly once and reuse for counting + matching.
-    per_article_tokens: list[list[str]] = [
-        tokenize(f"{a.title} {a.summary}", lang) for a in articles
+    # Pairs carry (counting key, raw surface); keys drive counts/matching,
+    # surfaces vote on the display spelling (e.g. "ai" -> "AI").
+    per_article_pairs: list[list[tuple[str, str]]] = [
+        tokenize_pairs(f"{a.title} {a.summary}", lang) for a in articles
     ]
 
     counter: Counter = Counter()
-    for tokens in per_article_tokens:
-        counter.update(tokens)
+    variants: dict[str, Counter] = defaultdict(Counter)
+    for pairs in per_article_pairs:
+        for key, surface in pairs:
+            counter[key] += 1
+            variants[key][surface] += 1
 
     # Drop metawords before slicing so they do not consume top-N slots.
     for meta in _METAWORDS:
         counter.pop(meta, None)
 
     top = counter.most_common(_MAX_LIMIT)
-    top_words = [word for word, _ in top]
-    words = [Word(word=word, count=count) for word, count in top]
+    display = resolve_display_forms({key: variants[key] for key, _ in top})
+    top_words = [key for key, _ in top]
+    words = [Word(word=display[key], count=count) for key, count in top]
 
-    for article, tokens in zip(articles, per_article_tokens):
-        token_set = set(tokens)
+    for article, pairs in zip(articles, per_article_pairs):
+        token_set = {key for key, _ in pairs}
         # Iterate top_words to preserve frequency-rank order.
-        article.matched_words = [w for w in top_words if w in token_set]
+        article.matched_words = [display[w] for w in top_words if w in token_set]
 
     return NewsResponse(
         edition=edition,
@@ -143,4 +150,4 @@ async def get_editions() -> dict[str, list[str]]:
 
 @router.get("/healthz")
 async def healthz() -> dict[str, str]:
-    return {"status": "ok"}
+    return {"status": "ok", "version": __version__}
