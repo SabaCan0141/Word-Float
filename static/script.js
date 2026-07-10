@@ -769,7 +769,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Keyboard word controls --------------------------------------------
     // WASD nudge every word one direction, F boosts (along its velocity, or a
-    // random direction when nearly still), R re-scatters all words. Velocity is
+    // random direction when nearly still), R re-scatters all words, E toggles
+    // the settings sidebar. Velocity is
     // added, never overwritten, so the beforeUpdate MAX_SPEED clamp still bounds
     // everything. One application per physical keydown (repeats are ignored).
     const KEY_IMPULSE = 3;      // WASD / F の1回あたりの加算速度
@@ -781,6 +782,25 @@ document.addEventListener('DOMContentLoaded', () => {
         Body.setVelocity(body, {
             x: body.velocity.x + dx,
             y: body.velocity.y + dy
+        });
+    };
+
+    // 全単語に加速インパルスを与える（Fキー / シェイク共通）。
+    // 動いていれば速度方向、静止していればランダム方向に加算する。
+    const boostWords = (impulse) => {
+        wordBodies().forEach(body => {
+            const vx = body.velocity.x, vy = body.velocity.y;
+            const speed = Math.hypot(vx, vy);
+            let ux, uy;
+            if (speed >= STILL_EPS) {
+                ux = vx / speed;
+                uy = vy / speed;
+            } else {
+                const theta = Math.random() * Math.PI * 2;
+                ux = Math.cos(theta);
+                uy = Math.sin(theta);
+            }
+            addVelocity(body, ux * impulse, uy * impulse);
         });
     };
 
@@ -799,9 +819,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const t = event.target;
         if (t instanceof HTMLElement &&
             (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
-        if (!simRunning) return;
 
         const key = event.key.toLowerCase();
+
+        // E: 設定サイドバーの開閉トグル。simRunning ガードより前に置くことで
+        // キャンバスが画面外でも設定を開けるようにする。
+        if (key === 'e') {
+            toggleMenu(document.querySelector('.hamburger'));
+            event.preventDefault();
+            return;
+        }
+
+        if (!simRunning) return;
 
         if (DIRECTIONS[key]) {
             // WASD: 一方向インパルス
@@ -812,20 +841,7 @@ document.addEventListener('DOMContentLoaded', () => {
             event.preventDefault();
         } else if (key === 'f') {
             // F: 動いていれば速度方向、静止していればランダム方向
-            wordBodies().forEach(body => {
-                const vx = body.velocity.x, vy = body.velocity.y;
-                const speed = Math.hypot(vx, vy);
-                let ux, uy;
-                if (speed >= STILL_EPS) {
-                    ux = vx / speed;
-                    uy = vy / speed;
-                } else {
-                    const theta = Math.random() * Math.PI * 2;
-                    ux = Math.cos(theta);
-                    uy = Math.sin(theta);
-                }
-                addVelocity(body, ux * KEY_IMPULSE, uy * KEY_IMPULSE);
-            });
+            boostWords(KEY_IMPULSE);
             event.preventDefault();
         } else if (key === 'r') {
             // R: 位置・速度のリセット（API再取得はしない）
@@ -844,6 +860,60 @@ document.addEventListener('DOMContentLoaded', () => {
             event.preventDefault();
         }
     });
+
+    // --- Shake-to-boost (mobile) ---------------------------------------------
+    // devicemotion の加速度（重力除外）の大きさ |a| = sqrt(ax²+ay²+az²) が
+    // 閾値を超えたら、PC版 F キーと同じ加速（boostWords）を発火する。
+    // インパルスはシェイク強度に比例（閾値超過分でスケール、上限あり）。
+    const SHAKE_THRESHOLD = 15;     // m/s²: これ未満は無視（歩行程度では発火しない）
+    const SHAKE_COOLDOWN = 500;     // ms: 連続発火防止
+    const SHAKE_MAX_SCALE = 3;      // インパルス倍率の上限
+    let lastShakeTime = 0;
+
+    const onDeviceMotion = (event) => {
+        if (!simRunning) return;
+        const now = Date.now();
+        if (now - lastShakeTime < SHAKE_COOLDOWN) return;
+
+        // acceleration（重力除外）が取れない端末では includingGravity から
+        // 重力分(≈9.81)を差し引いた大きさで代用する。
+        let mag;
+        const a = event.acceleration;
+        if (a && a.x !== null) {
+            mag = Math.hypot(a.x, a.y, a.z);
+        } else {
+            const g = event.accelerationIncludingGravity;
+            if (!g || g.x === null) return;
+            mag = Math.abs(Math.hypot(g.x, g.y, g.z) - 9.81);
+        }
+
+        if (mag < SHAKE_THRESHOLD) return;
+        lastShakeTime = now;
+
+        // 強度に比例したインパルス（閾値ちょうどで F キー1回分）
+        const scale = Math.min(mag / SHAKE_THRESHOLD, SHAKE_MAX_SCALE);
+        boostWords(KEY_IMPULSE * scale);
+    };
+
+    if ('DeviceMotionEvent' in window) {
+        if (typeof DeviceMotionEvent.requestPermission === 'function') {
+            // iOS 13+: 許可要求はユーザー操作起点でしか呼べないため、
+            // ページへの最初のタップで一度だけ自動要求する。
+            const requestMotionPermission = () => {
+                DeviceMotionEvent.requestPermission()
+                    .then(state => {
+                        if (state === 'granted') {
+                            window.addEventListener('devicemotion', onDeviceMotion);
+                        }
+                    })
+                    .catch(() => { /* 拒否/失敗時はシェイク加速なしで動作 */ });
+            };
+            document.addEventListener('touchend', requestMotionPermission, { once: true });
+        } else {
+            // Android 等: 許可不要でそのまま購読できる。
+            window.addEventListener('devicemotion', onDeviceMotion);
+        }
+    }
 
     restoreSettings();
     // reloadWords() reads the (now restored) panel, applies MAX_SPEED / rotation,
